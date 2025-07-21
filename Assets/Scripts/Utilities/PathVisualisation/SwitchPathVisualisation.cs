@@ -1,4 +1,5 @@
 using UnityEngine;
+using TMPro;
 
 public class SwitchPathVisualisation : MonoBehaviour {
 
@@ -6,12 +7,16 @@ public class SwitchPathVisualisation : MonoBehaviour {
     private PathLineVisualisation pathLineVis;
     [SerializeField]
     private PathArrowVisualisation arrowLineVis;
+    [SerializeField]
+    private TextMeshProUGUI distanceLabel;
 
     private int visualisationCounter = 0;
     private GameObject activeVisualisation;
+    private GameObject activeDistanceLabel;
 
     private void Start() {
         activeVisualisation = pathLineVis.gameObject;
+        activeDistanceLabel = distanceLabel.gameObject;
     }
 
     public void NextLineVisualisation() {
@@ -40,7 +45,9 @@ public class SwitchPathVisualisation : MonoBehaviour {
         activeVisualisation.SetActive(true);
     }
 
-    public void ToggleVisualVisibility() {
+    public void ToggleVisualVisibility()
+    {
         activeVisualisation.SetActive(!activeVisualisation.activeSelf);
+        activeDistanceLabel.SetActive(!activeDistanceLabel.activeSelf);
     }
 }
