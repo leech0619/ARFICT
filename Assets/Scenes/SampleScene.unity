@@ -3056,6 +3056,12 @@ MonoBehaviour:
     PositionObject: {fileID: 857750456}
   - Name: N012
     PositionObject: {fileID: 1391781240}
+  - Name: N007Recenter
+    PositionObject: {fileID: 990341478}
+  - Name: MainEntrance
+    PositionObject: {fileID: 520778055}
+  - Name: N011Recenter
+    PositionObject: {fileID: 709930256}
   distanceLabel: {fileID: 2002921633}
 --- !u!4 &520970626
 Transform:
@@ -4711,7 +4717,7 @@ GameObject:
   m_Component:
   - component: {fileID: 709930257}
   m_Layer: 0
-  m_Name: N011QrCode
+  m_Name: N011RecenterQrCode
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6149,7 +6155,7 @@ GameObject:
   m_Component:
   - component: {fileID: 990341479}
   m_Layer: 0
-  m_Name: N007QrCode
+  m_Name: N007RecenterQrCode
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
