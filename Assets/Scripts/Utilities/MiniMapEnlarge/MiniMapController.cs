@@ -61,7 +61,8 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
 
             Vector3 forwardDirection = topDownCamera.transform.forward;
             Vector3 rightDirection = topDownCamera.transform.right;
-            Vector3 movementDelta = forwardDirection * delta.y * dragSpeed + rightDirection * delta.x * dragSpeed;
+            // Invert the horizontal (x) direction for more intuitive map dragging
+            Vector3 movementDelta = forwardDirection * delta.y * dragSpeed + rightDirection * (-delta.x) * dragSpeed;
 
             topDownCamera.transform.position += movementDelta;
         }
