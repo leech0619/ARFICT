@@ -1,190 +1,127 @@
-//using UnityEngine;
-//using UnityEngine.EventSystems;
-
-//public class MinimapController : MonoBehaviour, IPointerClickHandler, IDragHandler
-//{
-//    public Camera topDownCamera; // Reference to the top-down camera
-//    public float dragSpeed = 2f; // Speed of dragging
-//    public float coverageIncrease = 0.2f; // Percentage increase in coverage when clicked
-
-//    private bool isFullscreen = false;
-//    private RectTransform minimapRectTransform;
-//    private Vector2 originalSize;
-//    private Vector2 dragStartPosition;
-
-//    void Start()
-//    {
-//        // Get the RectTransform component of the minimap
-//        minimapRectTransform = GetComponent<RectTransform>();
-//        // Store the original size of the minimap
-//        originalSize = minimapRectTransform.sizeDelta;
-//    }
-
-//    public void OnPointerClick(PointerEventData eventData)
-//    {
-//        if (!isFullscreen)
-//        {
-//            // Enlarge the minimap
-//            EnlargeMinimap();
-//            // Move the top-down camera up
-//            MoveCameraUp();
-//        }
-//    }
-
-//    public void OnDrag(PointerEventData eventData)
-//    {
-//        if (isFullscreen)
-//        {
-//            // If dragging, perform panning
-//            Vector2 delta = eventData.delta;
-//            delta /= minimapRectTransform.rect.size; // Normalize delta
-
-//            // Calculate the forward and right directions of the camera
-//            Vector3 forwardDirection = topDownCamera.transform.forward;
-//            Vector3 rightDirection = topDownCamera.transform.right;
-
-//            // Calculate the movement delta in world space
-//            Vector3 movementDelta = forwardDirection * delta.y * dragSpeed + rightDirection * delta.x * dragSpeed;
-
-//            // Move the camera accordingly
-//            topDownCamera.transform.position += movementDelta;
-//        }
-//    }
-
-//    void EnlargeMinimap()
-//    {
-//        // If not fullscreen, enlarge to match screen size while maintaining aspect ratio
-//        float aspectRatio = originalSize.x / originalSize.y;
-//        RectTransform canvasRectTransform = GetComponentInParent<Canvas>().GetComponent<RectTransform>();
-//        float newSizeY = canvasRectTransform.sizeDelta.y;
-//        float newSizeX = newSizeY * aspectRatio;
-//        minimapRectTransform.sizeDelta = new Vector2(newSizeX, newSizeY);
-//        // Set anchoring and position to center on the screen
-//        minimapRectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-//        minimapRectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-//        minimapRectTransform.pivot = new Vector2(0.5f, 0.5f);
-//        minimapRectTransform.anchoredPosition = Vector2.zero;
-
-//        // Set fullscreen flag
-//        isFullscreen = true;
-//    }
-
-//    void MoveCameraUp()
-//    {
-//        // Calculate the amount to move the camera up
-//        float originalOrthographicSize = topDownCamera.orthographicSize;
-//        float newOrthographicSize = originalOrthographicSize * (1 + coverageIncrease);
-//        float deltaY = (newOrthographicSize - originalOrthographicSize) * 0.5f;
-
-//        // Move the camera up
-//        topDownCamera.transform.position += Vector3.up * deltaY;
-//    }
-//}
-
-
-
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class MinimapController : MonoBehaviour, IPointerClickHandler, IDragHandler
+public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandler
 {
-    public Camera topDownCamera; // Reference to the top-down camera
-    public float dragSpeed = 2f; // Speed of dragging
-    public float coverageIncrease = 0.2f; // Percentage increase in coverage when clicked
-
+    public Camera topDownCamera;
+    public float dragSpeed = 2f;
+    public float coverageIncrease = 0.2f;
     public CloseButton closeButton;
 
-    private bool isFullscreen = false;
+    public bool isFullscreen = false;
     private RectTransform minimapRectTransform;
+    
+    // Store ALL original settings for proper restoration
     private Vector2 originalSize;
-    private Vector2 dragStartPosition;
+    private Vector2 originalAnchoredPosition;
+    private Vector2 originalAnchorMin;
+    private Vector2 originalAnchorMax;
+    private Vector2 originalPivot;
+    private Vector3 originalCameraPosition;
+    private float originalOrthographicSize;
 
     void Start()
     {
-        // Get the RectTransform component of the minimap
         minimapRectTransform = GetComponent<RectTransform>();
-        // Store the original size of the minimap
+        
+        // Store ALL original UI settings
         originalSize = minimapRectTransform.sizeDelta;
+        originalAnchoredPosition = minimapRectTransform.anchoredPosition;
+        originalAnchorMin = minimapRectTransform.anchorMin;
+        originalAnchorMax = minimapRectTransform.anchorMax;
+        originalPivot = minimapRectTransform.pivot;
+        
+        // Store original camera settings
+        if (topDownCamera != null)
+        {
+            originalCameraPosition = topDownCamera.transform.position;
+            originalOrthographicSize = topDownCamera.orthographicSize;
+        }
+        
+        Debug.Log($"Original settings stored - Size: {originalSize}, Position: {originalAnchoredPosition}");
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
         if (!isFullscreen)
         {
-            // Enlarge the minimap
             EnlargeMinimap();
-            // Move the top-down camera up
-            MoveCameraUp();
+            AdjustCameraForFullscreen();
             closeButton.ShowButton();
+            Debug.Log("Minimap enlarged to fullscreen");
         }
-     
     }
 
     public void OnDrag(PointerEventData eventData)
     {
         if (isFullscreen)
         {
-            // If dragging, perform panning
             Vector2 delta = eventData.delta;
-            delta /= minimapRectTransform.rect.size; // Normalize delta
+            delta /= minimapRectTransform.rect.size;
 
-            // Calculate the forward and right directions of the camera
             Vector3 forwardDirection = topDownCamera.transform.forward;
             Vector3 rightDirection = topDownCamera.transform.right;
-
-            // Calculate the movement delta in world space
             Vector3 movementDelta = forwardDirection * delta.y * dragSpeed + rightDirection * delta.x * dragSpeed;
 
-            // Move the camera accordingly
             topDownCamera.transform.position += movementDelta;
         }
     }
 
     void EnlargeMinimap()
     {
-        // If not fullscreen, enlarge to match screen size while maintaining aspect ratio
-        float aspectRatio = originalSize.x / originalSize.y;
-        RectTransform canvasRectTransform = GetComponentInParent<Canvas>().GetComponent<RectTransform>();
-        float newSizeY = canvasRectTransform.sizeDelta.y;
-        float newSizeX = newSizeY * aspectRatio;
-        minimapRectTransform.sizeDelta = new Vector2(newSizeX, newSizeY);
-        // Set anchoring and position to center on the screen
+        float screenWidth = Screen.width;
+        float screenHeight = Screen.height;
+
+        float squarePercentage = 0.7f;
+        float squareSize = screenHeight * squarePercentage;
+        
+        if (squareSize > screenWidth * 0.9f)
+        {
+            squareSize = screenWidth * 0.9f;
+        }
+
+        minimapRectTransform.sizeDelta = new Vector2(squareSize, squareSize);
         minimapRectTransform.anchorMin = new Vector2(0.5f, 0.5f);
         minimapRectTransform.anchorMax = new Vector2(0.5f, 0.5f);
         minimapRectTransform.pivot = new Vector2(0.5f, 0.5f);
         minimapRectTransform.anchoredPosition = Vector2.zero;
 
-        // Set fullscreen flag
         isFullscreen = true;
-
-        Vector3 forwardDirection = topDownCamera.transform.forward;
-        float forwardOffset = 25.0f; // Adjust this value as needed
-        topDownCamera.transform.position += forwardDirection * forwardOffset;
     }
 
-    void MoveCameraUp()
+    void AdjustCameraForFullscreen()
     {
-        // Calculate the amount to move the camera up
-        float originalOrthographicSize = topDownCamera.orthographicSize;
-        float newOrthographicSize = originalOrthographicSize * (1 + coverageIncrease);
-        float deltaY = (newOrthographicSize - originalOrthographicSize) * 0.5f;
+        if (topDownCamera == null) return;
 
-        // Move the camera up
-        topDownCamera.transform.position += Vector3.up * deltaY;
+        // Only adjust orthographic size, don't move position to avoid issues
+        topDownCamera.orthographicSize = originalOrthographicSize * (1 + coverageIncrease);
     }
 
-    //void ShrinkMinimap()
-    //{
-    //    // Shrink back to original size
-    //    minimapRectTransform.sizeDelta = originalSize;
-    //    // Reset anchoring and position
-    //    minimapRectTransform.anchorMin = new Vector2(0, 1);
-    //    minimapRectTransform.anchorMax = new Vector2(0, 1);
-    //    minimapRectTransform.pivot = new Vector2(0, 1);
-    //    minimapRectTransform.anchoredPosition = new Vector2(0, -originalSize.y); // Move to bottom left corner
+    // PUBLIC method for external scripts to restore minimap
+    public void RestoreMinimap()
+    {
+        if (!isFullscreen) return;
 
-    //    // Reset fullscreen flag
-    //    isFullscreen = false;
-    //}
+        Debug.Log($"Restoring to original - Size: {originalSize}, Position: {originalAnchoredPosition}");
+
+        // Restore ALL original UI settings
+        minimapRectTransform.sizeDelta = originalSize;
+        minimapRectTransform.anchoredPosition = originalAnchoredPosition;
+        minimapRectTransform.anchorMin = originalAnchorMin;
+        minimapRectTransform.anchorMax = originalAnchorMax;
+        minimapRectTransform.pivot = originalPivot;
+
+        // Restore camera settings
+        if (topDownCamera != null)
+        {
+            topDownCamera.transform.position = originalCameraPosition;
+            topDownCamera.orthographicSize = originalOrthographicSize;
+        }
+
+        closeButton.HideButton();
+        isFullscreen = false;
+        
+        Debug.Log("Minimap restored to original state");
+    }
 }
 
