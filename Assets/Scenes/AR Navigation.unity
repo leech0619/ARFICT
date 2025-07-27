@@ -7591,7 +7591,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   topDownCamera: {fileID: 1153494021}
-  dragSpeed: 30
+  dragSpeed: 22
   coverageIncrease: 50
   closeButton: {fileID: 1988888163}
   isFullscreen: 0
