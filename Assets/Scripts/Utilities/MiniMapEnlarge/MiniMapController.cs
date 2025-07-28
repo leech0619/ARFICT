@@ -19,6 +19,7 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
     private Vector2 originalPivot;
     private Vector3 originalCameraPosition;
     private float originalOrthographicSize;
+    private Transform originalParent; // Store original parent
 
     void Start()
     {
@@ -30,6 +31,7 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
         originalAnchorMin = minimapRectTransform.anchorMin;
         originalAnchorMax = minimapRectTransform.anchorMax;
         originalPivot = minimapRectTransform.pivot;
+        originalParent = minimapRectTransform.parent; // Store original parent
         
         // Store original camera settings
         if (topDownCamera != null)
@@ -81,11 +83,23 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
             squareSize = screenWidth * 0.9f;
         }
 
-        minimapRectTransform.sizeDelta = new Vector2(squareSize, squareSize);
+        // Temporarily reparent to Canvas to avoid parent positioning issues
+        Canvas parentCanvas = GetComponentInParent<Canvas>();
+        if (parentCanvas != null)
+        {
+            minimapRectTransform.SetParent(parentCanvas.transform, false);
+        }
+
+        // Set anchors to center
         minimapRectTransform.anchorMin = new Vector2(0.5f, 0.5f);
         minimapRectTransform.anchorMax = new Vector2(0.5f, 0.5f);
         minimapRectTransform.pivot = new Vector2(0.5f, 0.5f);
-        minimapRectTransform.anchoredPosition = Vector2.zero;
+        
+        // Set size
+        minimapRectTransform.sizeDelta = new Vector2(squareSize, squareSize);
+        
+        // Set position to center (0, 0) relative to center anchor
+        minimapRectTransform.anchoredPosition = new Vector2(0, 0);
 
         isFullscreen = true;
     }
@@ -104,6 +118,12 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
         if (!isFullscreen) return;
 
         Debug.Log($"Restoring to original - Size: {originalSize}, Position: {originalAnchoredPosition}");
+
+        // Restore original parent first
+        if (originalParent != null)
+        {
+            minimapRectTransform.SetParent(originalParent, false);
+        }
 
         // Restore ALL original UI settings
         minimapRectTransform.sizeDelta = originalSize;

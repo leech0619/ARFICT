@@ -15,7 +15,17 @@ public class PathLineVisualisation : MonoBehaviour {
     private Vector3[] calculatedPathAndOffset;
 
     private void Update() {
+        if (navigationController == null) return;
+        
         path = navigationController.CalculatedPath;
+        if (path == null || path.corners == null || path.corners.Length == 0) {
+            // Hide line renderer when no path
+            if (line != null) {
+                line.positionCount = 0;
+            }
+            return;
+        }
+        
         AddOffsetToPath();
         AddLineOffset();
         SetLineRendererPositions();
