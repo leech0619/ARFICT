@@ -40,7 +40,6 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
             originalOrthographicSize = topDownCamera.orthographicSize;
         }
         
-        Debug.Log($"Original settings stored - Size: {originalSize}, Position: {originalAnchoredPosition}");
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -50,7 +49,6 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
             EnlargeMinimap();
             AdjustCameraForFullscreen();
             closeButton.ShowButton();
-            Debug.Log("Minimap enlarged to fullscreen");
         }
     }
 
@@ -117,8 +115,6 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
     {
         if (!isFullscreen) return;
 
-        Debug.Log($"Restoring to original - Size: {originalSize}, Position: {originalAnchoredPosition}");
-
         // Restore original parent first
         if (originalParent != null)
         {
@@ -132,17 +128,16 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
         minimapRectTransform.anchorMax = originalAnchorMax;
         minimapRectTransform.pivot = originalPivot;
 
-        // Restore camera settings
+        // Restore camera settings - but DON'T reset position, only orthographic size
         if (topDownCamera != null)
         {
-            topDownCamera.transform.position = originalCameraPosition;
+            // Only restore orthographic size, keep current position to follow indicator
             topDownCamera.orthographicSize = originalOrthographicSize;
+            // Do NOT restore position: topDownCamera.transform.position = originalCameraPosition;
         }
 
         closeButton.HideButton();
         isFullscreen = false;
-        
-        Debug.Log("Minimap restored to original state");
     }
 }
 
