@@ -31,7 +31,7 @@ public class PathArrowVisualisation : MonoBehaviour {
     private void AddOffsetToPath() {
         pathOffset = new Vector3[path.corners.Length];
         for (int i = 0; i < path.corners.Length; i++) {
-            pathOffset[i] = new Vector3(path.corners[i].x, transform.position.y, path.corners[i].z);
+            pathOffset[i] = new Vector3(path.corners[i].x, path.corners[i].y, path.corners[i].z);
         }
     }
 

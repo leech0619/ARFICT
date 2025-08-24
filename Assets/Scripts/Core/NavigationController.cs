@@ -6,12 +6,25 @@ public class NavigationController : MonoBehaviour {
     public Vector3 TargetPosition { get; set; } = Vector3.zero;
 
     public NavMeshPath CalculatedPath { get; private set; }
+    
+    [SerializeField]
+    private Camera arCamera;
 
     private void Start() {
         CalculatedPath = new NavMeshPath();
+        
+        if (arCamera == null)
+        {
+            arCamera = Camera.main;
+        }
     }
 
     private void Update() {
+        if (arCamera != null)
+        {
+            transform.position = arCamera.transform.position;
+        }
+        
         if (TargetPosition != Vector3.zero) {
             NavMesh.CalculatePath(transform.position, TargetPosition, NavMesh.AllAreas, CalculatedPath);
         }

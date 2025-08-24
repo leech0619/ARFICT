@@ -17,15 +17,23 @@ public class TargetHandler : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI distanceLabel; // UI label for distance display
 
+    private void Start()
+    {
+        DeactivateAllTargets();
+    }
+
     public void SetSelectedTargetPositionWithDropdown(int selectedValue)
     {
         Vector3 targetPosition = GetCurrentlySelectedTarget(selectedValue);
+        
+        DeactivateAllTargets();
         
         if (targetPosition != Vector3.zero)
         {
             navigationController.TargetPosition = targetPosition;
             
-            // Update distance after path calculation
+            ActivateSelectedTarget(selectedValue);
+            
             StartCoroutine(UpdateDistanceAfterPathCalculation());
         }
         else
@@ -36,7 +44,6 @@ public class TargetHandler : MonoBehaviour
 
     private IEnumerator UpdateDistanceAfterPathCalculation()
     {
-        // Wait for NavigationController to calculate new path
         yield return new WaitForEndOfFrame();
         
         float distance = CalculateCurrentPathDistance();
@@ -58,7 +65,6 @@ public class TargetHandler : MonoBehaviour
 
         float distance = 0f;
         
-        // Calculate total distance by summing distances between consecutive path points
         for (int i = 0; i < path.corners.Length - 1; i++)
         {
             distance += Vector3.Distance(path.corners[i], path.corners[i + 1]);
@@ -67,13 +73,42 @@ public class TargetHandler : MonoBehaviour
         return distance;
     }
 
+    // Calculate actual NavMesh path distance to a specific target
+    private float CalculateNavMeshDistanceToTarget(Vector3 targetPosition)
+    {
+        if (navigationController == null) return float.MaxValue;
+
+        Vector3 currentPosition = navigationController.transform.position;
+        UnityEngine.AI.NavMeshPath tempPath = new UnityEngine.AI.NavMeshPath();
+        
+        if (UnityEngine.AI.NavMesh.CalculatePath(currentPosition, targetPosition, UnityEngine.AI.NavMesh.AllAreas, tempPath))
+        {
+            float totalDistance = 0f;
+            
+            if (tempPath.corners.Length >= 2)
+            {
+                for (int i = 0; i < tempPath.corners.Length - 1; i++)
+                {
+                    totalDistance += Vector3.Distance(tempPath.corners[i], tempPath.corners[i + 1]);
+                }
+            }
+            else if (tempPath.corners.Length == 1)
+            {
+                totalDistance = Vector3.Distance(currentPosition, targetPosition);
+            }
+            
+            return totalDistance;
+        }
+        
+        return float.MaxValue;
+    }
+
     private void UpdateDistanceLabel(float distance)
     {
         if (distanceLabel != null)
         {
             if (distance > 0f)
             {
-                // Always show distance in meters with two decimal places
                 distanceLabel.text = $"Distance: {distance:F2} m";
             }
             else
@@ -92,8 +127,22 @@ public class TargetHandler : MonoBehaviour
 
         Target selectedTarget = navigationTargetObjects[selectedValue];
         
-        if (selectedTarget != null && selectedTarget.PositionObject != null)
+        if (selectedTarget?.PositionObject != null)
         {
+            // Check if multiple targets exist with same name
+            List<Target> matchingTargets = navigationTargetObjects.FindAll(x => 
+                x.Name.ToLower().Equals(selectedTarget.Name.ToLower()));
+            
+            if (matchingTargets.Count > 1)
+            {
+                // Find closest target by NavMesh distance
+                Target closestTarget = GetClosestTargetByTargetText(selectedTarget.Name);
+                if (closestTarget != null)
+                {
+                    return closestTarget.PositionObject.transform.position;
+                }
+            }
+            
             return selectedTarget.PositionObject.transform.position;
         }
 
@@ -106,7 +155,118 @@ public class TargetHandler : MonoBehaviour
             x.Name.ToLower().Equals(targetText.ToLower()));
     }
 
-    // Optional: Real-time distance updates as user moves
+    // Find closest target by name using NavMesh path distance
+    public Target GetClosestTargetByTargetText(string targetText)
+    {
+        List<Target> matchingTargets = navigationTargetObjects.FindAll(x => 
+            x.Name.ToLower().Equals(targetText.ToLower()));
+        
+        if (matchingTargets.Count == 0) return null;
+        if (matchingTargets.Count == 1) return matchingTargets[0];
+        
+        Target closestTarget = null;
+        float closestDistance = float.MaxValue;
+        
+        foreach (Target target in matchingTargets)
+        {
+            if (target?.PositionObject != null)
+            {
+                float distance = CalculateNavMeshDistanceToTarget(target.PositionObject.transform.position);
+                
+                if (distance < closestDistance && distance != float.MaxValue)
+                {
+                    closestDistance = distance;
+                    closestTarget = target;
+                }
+            }
+        }
+        
+        return closestTarget;
+    }
+
+    private void DeactivateAllTargets()
+    {
+        foreach (Target target in navigationTargetObjects)
+        {
+            if (target != null && target.PositionObject != null)
+            {
+                target.PositionObject.SetActive(false);
+            }
+        }
+    }
+
+    private void ActivateSelectedTarget(int targetIndex)
+    {
+        if (targetIndex >= 0 && targetIndex < navigationTargetObjects.Count)
+        {
+            Target selectedTarget = navigationTargetObjects[targetIndex];
+            if (selectedTarget?.PositionObject != null)
+            {
+                // Check if multiple targets exist with same name
+                List<Target> matchingTargets = navigationTargetObjects.FindAll(x => 
+                    x.Name.ToLower().Equals(selectedTarget.Name.ToLower()));
+                
+                if (matchingTargets.Count > 1)
+                {
+                    // Activate closest target
+                    Target closestTarget = GetClosestTargetByTargetText(selectedTarget.Name);
+                    if (closestTarget?.PositionObject != null)
+                    {
+                        closestTarget.PositionObject.SetActive(true);
+                        return;
+                    }
+                }
+                
+                selectedTarget.PositionObject.SetActive(true);
+            }
+        }
+    }
+
+    public void ActivateTargetByName(string targetName)
+    {
+        DeactivateAllTargets();
+        
+        Target targetToActivate = GetClosestTargetByTargetText(targetName);
+        if (targetToActivate?.PositionObject != null)
+        {
+            targetToActivate.PositionObject.SetActive(true);
+            navigationController.TargetPosition = targetToActivate.PositionObject.transform.position;
+            StartCoroutine(UpdateDistanceAfterPathCalculation());
+        }
+    }
+
+    public Target GetActiveTarget()
+    {
+        foreach (Target target in navigationTargetObjects)
+        {
+            if (target != null && target.PositionObject != null && target.PositionObject.activeSelf)
+            {
+                return target;
+            }
+        }
+        return null;
+    }
+
+    public void ClearAllTargets()
+    {
+        DeactivateAllTargets();
+        navigationController.TargetPosition = Vector3.zero;
+        UpdateDistanceLabel(0f);
+    }
+
+    public int GetActiveTargetIndex()
+    {
+        for (int i = 0; i < navigationTargetObjects.Count; i++)
+        {
+            Target target = navigationTargetObjects[i];
+            if (target != null && target.PositionObject != null && target.PositionObject.activeSelf)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     private void Update()
     {
         if (navigationController != null && navigationController.TargetPosition != Vector3.zero)
