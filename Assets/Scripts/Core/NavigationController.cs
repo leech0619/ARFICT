@@ -27,6 +27,16 @@ public class NavigationController : MonoBehaviour {
         
         if (TargetPosition != Vector3.zero) {
             NavMesh.CalculatePath(transform.position, TargetPosition, NavMesh.AllAreas, CalculatedPath);
+        } else {
+            // Clear the calculated path when no target is set
+            ClearCalculatedPath();
+        }
+    }
+    
+    // Method to completely clear the calculated path
+    public void ClearCalculatedPath() {
+        if (CalculatedPath != null) {
+            CalculatedPath.ClearCorners();
         }
     }
 }
