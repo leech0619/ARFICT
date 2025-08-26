@@ -21,6 +21,9 @@ public class TargetHandler : MonoBehaviour
     private ArriveTargetSound arriveTargetSound; // Audio component for arrival notifications
     
     [SerializeField]
+    private ArriveDialog arriveDialog; // Dialog component for arrival notifications
+    
+    [SerializeField]
     private float rerouteCheckInterval = 2.0f; // How often to check for closer targets (in seconds)
     
     [SerializeField]
@@ -105,6 +108,12 @@ public class TargetHandler : MonoBehaviour
         {
             arriveTargetSound.ResetSoundState();
         }
+        
+        // Reset arrival dialog state
+        if (arriveDialog != null)
+        {
+            arriveDialog.ResetDialogState();
+        }
     }
 
     private IEnumerator UpdateDistanceAfterPathCalculation()
@@ -182,6 +191,12 @@ public class TargetHandler : MonoBehaviour
                     Vector3 userPosition = navigationController.transform.position;
                     Vector3 targetPosition = navigationController.TargetPosition;
                     arriveTargetSound.CheckArrival(distance, currentTargetName, userPosition, targetPosition);
+                }
+                
+                // Check for arrival dialog trigger
+                if (arriveDialog != null && !string.IsNullOrEmpty(currentTargetName))
+                {
+                    arriveDialog.CheckArrival(distance, currentTargetName);
                 }
             }
             else
@@ -366,6 +381,18 @@ public class TargetHandler : MonoBehaviour
                 
                 // Use direct distance for arrival detection as it's more accurate for close range
                 arriveTargetSound.CheckArrival(directDistance, currentTargetName, userPosition, targetPosition);
+            }
+            
+            // Check direct distance for arrival dialog (more accurate for close proximity)
+            if (arriveDialog != null && !string.IsNullOrEmpty(currentTargetName))
+            {
+                float directDistance = Vector3.Distance(
+                    navigationController.transform.position, 
+                    navigationController.TargetPosition
+                );
+                
+                // Use direct distance for dialog detection
+                arriveDialog.CheckArrival(directDistance, currentTargetName);
             }
         }
     }
