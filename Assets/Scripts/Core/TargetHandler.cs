@@ -18,6 +18,9 @@ public class TargetHandler : MonoBehaviour
     private TextMeshProUGUI distanceLabel; // UI label for distance display
     
     [SerializeField]
+    private ArriveTargetSound arriveTargetSound; // Audio component for arrival notifications
+    
+    [SerializeField]
     private float rerouteCheckInterval = 2.0f; // How often to check for closer targets (in seconds)
     
     [SerializeField]
@@ -68,19 +71,16 @@ public class TargetHandler : MonoBehaviour
         }
     }
     
-    // Helper method to check if the selected value corresponds to "SELECT" placeholder
+    // Helper method to check if the selected value corresponds to "Select" placeholder
     private bool IsSelectPlaceholder(int selectedValue)
     {
-        // Check if dropdown has options and the selected option is "SELECT"
+        // Check if dropdown has options and the selected option is "Select"
         if (targetDataDropdown != null && 
             selectedValue >= 0 && 
             selectedValue < targetDataDropdown.options.Count)
         {
-            string optionText = targetDataDropdown.options[selectedValue].text.ToUpper().Trim();
-            return optionText == "SELECT" || 
-                   optionText == "CHOOSE TARGET" || 
-                   optionText == "SELECT TARGET" ||
-                   optionText == "---SELECT---";
+            string optionText = targetDataDropdown.options[selectedValue].text.Trim();
+            return optionText == "Select";
         }
         
         // Fallback: treat index 0 as placeholder if no dropdown reference
@@ -99,6 +99,12 @@ public class TargetHandler : MonoBehaviour
         StopContinuousRerouting();
         UpdateDistanceLabel(0f);
         currentTargetName = "";
+        
+        // Reset arrival sound state
+        if (arriveTargetSound != null)
+        {
+            arriveTargetSound.ResetSoundState();
+        }
     }
 
     private IEnumerator UpdateDistanceAfterPathCalculation()
@@ -169,6 +175,14 @@ public class TargetHandler : MonoBehaviour
             if (distance > 0f)
             {
                 distanceLabel.text = $"Distance: {distance:F2} m";
+                
+                // Check for arrival sound trigger
+                if (arriveTargetSound != null && !string.IsNullOrEmpty(currentTargetName) && navigationController != null)
+                {
+                    Vector3 userPosition = navigationController.transform.position;
+                    Vector3 targetPosition = navigationController.TargetPosition;
+                    arriveTargetSound.CheckArrival(distance, currentTargetName, userPosition, targetPosition);
+                }
             }
             else
             {
@@ -341,6 +355,17 @@ public class TargetHandler : MonoBehaviour
             if (currentDistance > 0f)
             {
                 UpdateDistanceLabel(currentDistance);
+            }
+            
+            // Also check direct distance for arrival sound (more accurate for close proximity)
+            if (arriveTargetSound != null && !string.IsNullOrEmpty(currentTargetName))
+            {
+                Vector3 userPosition = navigationController.transform.position;
+                Vector3 targetPosition = navigationController.TargetPosition;
+                float directDistance = Vector3.Distance(userPosition, targetPosition);
+                
+                // Use direct distance for arrival detection as it's more accurate for close range
+                arriveTargetSound.CheckArrival(directDistance, currentTargetName, userPosition, targetPosition);
             }
         }
     }

@@ -2,13 +2,32 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandler
+public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandler, IScrollHandler
 {
     public Camera topDownCamera;
     public Camera arCamera; // Reference to AR camera for position calculation
     public float dragSpeed = 2f;
     public float coverageIncrease = 2.0f; // Increase to 200% more coverage
     public CloseButton closeButton;
+    
+    [Header("Zoom Settings")]
+    public float zoomSpeed = 0.5f;
+    public float minZoom = 1f;
+    public float maxZoom = 5f;
+    
+    [Header("Movement Boundaries")]
+    [Header("Map Size: X=101, Z=36 | Camera: Size=6, Y=5")]
+    public float mapBoundaryX = 38.5f; // Max X movement: (101/2) - (6*1.77) = 50.5 - 10.6 ≈ 38.5
+    public float mapBoundaryZ = 12f;   // Max Z movement: (36/2) - 6 = 18 - 6 = 12
+    
+    [Header("Map Center (World Coordinates)")]
+    public Vector3 actualMapCenter = Vector3.zero; // Set this to your actual map center in world coordinates
+    
+    // Touch/pinch zoom variables
+    private float lastTouchDistance = 0f;
+    private bool isPinching = false;
+    private Vector3 mapCenter; // Center position for boundary calculations
+    private Vector3 logicalCameraPosition; // Logical position for movement calculations (Z can change)
     
     [Header("UI References")]
     public GameObject border; // Border GameObject (active by default)
@@ -95,6 +114,100 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
         }
     }
 
+    void Update()
+    {
+        // Handle mobile pinch-to-zoom
+        if (isFullscreen && Input.touchCount == 2)
+        {
+            HandlePinchZoom();
+        }
+        else
+        {
+            isPinching = false;
+        }
+    }
+
+    void HandlePinchZoom()
+    {
+        Touch touch1 = Input.GetTouch(0);
+        Touch touch2 = Input.GetTouch(1);
+        
+        // Get current distance between touches
+        float currentTouchDistance = Vector2.Distance(touch1.position, touch2.position);
+        
+        if (isPinching)
+        {
+            // Calculate zoom based on distance change
+            float deltaDistance = currentTouchDistance - lastTouchDistance;
+            
+            // Convert distance change to zoom
+            float zoomDelta = deltaDistance * zoomSpeed * 0.01f; // Scale down for smoother zoom
+            
+            // Apply zoom
+            ApplyZoom(-zoomDelta); // Negative because pinching in should zoom in
+        }
+        else
+        {
+            // Start pinching
+            isPinching = true;
+        }
+        
+        lastTouchDistance = currentTouchDistance;
+    }
+
+    void ApplyZoom(float zoomDelta)
+    {
+        if (topDownCamera == null) return;
+        
+        // Calculate new orthographic size
+        float currentSize = topDownCamera.orthographicSize;
+        float newSize = currentSize + zoomDelta;
+        
+        // Clamp the zoom within the specified range
+        // Note: smaller orthographic size = more zoomed in
+        float baseSize = originalOrthographicSize * (1 + coverageIncrease);
+        float minOrthographicSize = baseSize / maxZoom; // Most zoomed in
+        float maxOrthographicSize = baseSize / minZoom; // Most zoomed out
+        
+        newSize = Mathf.Clamp(newSize, minOrthographicSize, maxOrthographicSize);
+        
+        // Apply the new orthographic size
+        topDownCamera.orthographicSize = newSize;
+        
+        // After zoom, adjust camera position to stay within map boundaries
+        AdjustCameraPositionForZoom();
+        
+        Debug.Log($"Zoom Applied: OrthoSize={newSize}, Range=[{minOrthographicSize}, {maxOrthographicSize}]");
+    }
+    
+    void AdjustCameraPositionForZoom()
+    {
+        if (topDownCamera == null) return;
+        
+        Vector3 currentPosition = topDownCamera.transform.position;
+        
+        // Calculate dynamic boundaries based on current zoom level
+        float currentOrthoSize = topDownCamera.orthographicSize;
+        float viewHalfWidth = currentOrthoSize * Camera.main.aspect;
+        float viewHalfHeight = currentOrthoSize;
+        
+        // Calculate boundaries to prevent camera view from going outside map
+        float dynamicBoundaryX = Mathf.Max(0, (101f / 2f) - viewHalfWidth);
+        float dynamicBoundaryZ = Mathf.Max(0, (36f / 2f) - viewHalfHeight);
+        
+        // Clamp camera position to stay within boundaries
+        Vector3 clampedPosition = currentPosition;
+        clampedPosition.x = Mathf.Clamp(currentPosition.x, mapCenter.x - dynamicBoundaryX, mapCenter.x + dynamicBoundaryX);
+        clampedPosition.z = Mathf.Clamp(currentPosition.z, mapCenter.z - dynamicBoundaryZ, mapCenter.z + dynamicBoundaryZ);
+        
+        // Update both actual camera position and logical position
+        topDownCamera.transform.position = clampedPosition;
+        logicalCameraPosition = clampedPosition;
+        
+        Debug.Log($"Camera position adjusted for zoom - X: {clampedPosition.x:F1}, Z: {clampedPosition.z:F1}");
+        Debug.Log($"Zoom boundaries - X: ±{dynamicBoundaryX:F1}, Z: ±{dynamicBoundaryZ:F1}");
+    }
+
     public void OnDrag(PointerEventData eventData)
     {
         if (isFullscreen)
@@ -102,17 +215,52 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
             Vector2 delta = eventData.delta;
             delta /= minimapRectTransform.rect.size;
 
-            // Only allow X-axis movement, keep Z-axis fixed at -8
-            Vector3 rightDirection = topDownCamera.transform.right;
+            // Use world space directions for consistent movement (both X and Z inverted for natural feel)
+            // For top-down camera: X = left/right, Z = forward/backward movement
+            Vector3 movementDelta = new Vector3(-delta.x, 0, -delta.y) * dragSpeed;
             
-            // Calculate only horizontal movement (X-axis)
-            Vector3 movementDelta = rightDirection * (-delta.x) * dragSpeed;
+            // Calculate what the new LOGICAL position would be (allows Z movement)
+            Vector3 newLogicalPosition = logicalCameraPosition + movementDelta;
+            newLogicalPosition.y = logicalCameraPosition.y; // Keep Y-axis (height) unchanged
             
-            // Apply movement but constrain Z-axis to -8
-            Vector3 newPosition = topDownCamera.transform.position + movementDelta;
-            newPosition.z = -8f; // Keep Z-axis fixed at -8
+            // Apply boundary constraints to prevent moving outside the map area
+            // Calculate dynamic boundaries based on current zoom level
+            float currentOrthoSize = topDownCamera.orthographicSize;
+            float viewHalfWidth = currentOrthoSize * Camera.main.aspect; // Approximate aspect ratio
+            float viewHalfHeight = currentOrthoSize;
             
-            topDownCamera.transform.position = newPosition;
+            // Adjust boundaries based on current camera view size
+            float dynamicBoundaryX = Mathf.Max(0, (101f / 2f) - viewHalfWidth);
+            float dynamicBoundaryZ = Mathf.Max(0, (36f / 2f) - viewHalfHeight);
+            
+            // Clamp logical X and Z positions to prevent going outside map bounds
+            newLogicalPosition.x = Mathf.Clamp(newLogicalPosition.x, mapCenter.x - dynamicBoundaryX, mapCenter.x + dynamicBoundaryX);
+            newLogicalPosition.z = Mathf.Clamp(newLogicalPosition.z, mapCenter.z - dynamicBoundaryZ, mapCenter.z + dynamicBoundaryZ);
+            
+            // Update logical position
+            logicalCameraPosition = newLogicalPosition;
+            
+            // Set actual camera position - use logical X and Z, keep Y at 5 for top-down view
+            Vector3 actualCameraPosition = new Vector3(newLogicalPosition.x, 5f, newLogicalPosition.z);
+            topDownCamera.transform.position = actualCameraPosition;
+            
+            Debug.Log($"Logical position: X: {newLogicalPosition.x:F1}, Z: {newLogicalPosition.z:F1}");
+            Debug.Log($"Camera position: X: {actualCameraPosition.x:F1}, Y: {actualCameraPosition.y:F1}, Z: {actualCameraPosition.z:F1}");
+            Debug.Log($"Boundaries - X: ±{dynamicBoundaryX:F1}, Z: ±{dynamicBoundaryZ:F1}");
+        }
+    }
+
+    public void OnScroll(PointerEventData eventData)
+    {
+        if (isFullscreen && topDownCamera != null)
+        {
+            // Get scroll direction (positive for zoom in, negative for zoom out)
+            float scrollDelta = eventData.scrollDelta.y;
+            
+            // Apply zoom using the shared method
+            ApplyZoom(-scrollDelta * zoomSpeed);
+            
+            Debug.Log($"Scroll Zoom: ScrollDelta={scrollDelta}");
         }
     }
 
@@ -211,24 +359,43 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
         if (arCamera != null)
         {
             Vector3 arCameraPosition = arCamera.transform.position;
-            Vector3 newPosition = new Vector3(arCameraPosition.x, arCameraPosition.y + 5f, -8f);
+            Vector3 newPosition = new Vector3(arCameraPosition.x, 5f, -8f);
             topDownCamera.transform.position = newPosition;
+            
+            // Use AR camera position as starting point but set proper map center for boundaries
+            // Map center should be at the center of your 101x36 map, not AR camera position
+            mapCenter = new Vector3(-5.848206f, 0, -8); // Assuming your map is centered at origin
+            
+            // Initialize logical camera position (start at AR camera position)
+            logicalCameraPosition = new Vector3(arCameraPosition.x, 5f, arCameraPosition.z);
+            
             Debug.Log($"Camera positioned above AR camera: AR at {arCameraPosition}, TopDown at {newPosition}");
         }
         else
         {
-            // Fallback to original behavior: keep X and Y from original position, set Z to -8
+            // Fallback to original behavior
             Vector3 newPosition = topDownCamera.transform.position;
-            newPosition.z = -8f;
+            newPosition.y = 5f; // Set proper height
             topDownCamera.transform.position = newPosition;
-            Debug.Log($"Camera Z-axis set to -8, position: {topDownCamera.transform.position}");
+            
+            // Use proper map center for boundaries
+            mapCenter = new Vector3(-5.848206f, 0, -8); // Assuming your map is centered at origin
+            
+            // Initialize logical camera position
+            logicalCameraPosition = new Vector3(newPosition.x, 5f, newPosition.z);
+            
+            Debug.Log($"Camera positioned at: {topDownCamera.transform.position}");
         }
+
+        // Map center for boundary calculations (center of your 101x36 map)
+        Debug.Log($"Map center set to: {mapCenter}");
 
         // Significantly increase orthographic size to show much more area when enlarged
         float newOrthographicSize = originalOrthographicSize * (1 + coverageIncrease);
         topDownCamera.orthographicSize = newOrthographicSize;
         
         Debug.Log($"Camera adjusted: Original size: {originalOrthographicSize}, New size: {newOrthographicSize}");
+        Debug.Log($"Map center set to: {mapCenter}");
     }
 
     // PUBLIC method for external scripts to restore minimap
