@@ -58,8 +58,7 @@ public class PathArrowVisualisation : MonoBehaviour {
         
         Vector3 currentPos = transform.position;
         
-        // Instead of finding closest point, find the farthest point we've already passed
-        // This prevents pointing backwards
+        // Find the farthest point we've already passed
         int currentPathIndex = 0;
         
         for (int i = 0; i < pathOffset.Length; i++) {
@@ -72,20 +71,26 @@ public class PathArrowVisualisation : MonoBehaviour {
             }
         }
         
-        // Look for the next point ahead in the path sequence
-        int nextIndex = currentPathIndex + 1;
-        if (nextIndex < pathOffset.Length) {
-            Vector3 nextPoint = pathOffset[nextIndex];
-            currentDistance = Vector3.Distance(currentPos, nextPoint);
+        // Look for the next suitable point ahead in the path sequence
+        // Start from the next point but look further ahead if needed
+        for (int i = currentPathIndex + 1; i < pathOffset.Length; i++) {
+            Vector3 pathPoint = pathOffset[i];
+            float distance = Vector3.Distance(currentPos, pathPoint);
             
-            // For NavMesh with slopes/stairs, accept any forward point
-            // The NavMesh already handles the slope calculations
-            Debug.Log($"Arrow pointing to point {nextIndex}: distance={currentDistance:F2}, height={nextPoint.y:F2}");
-            return nextPoint;
+            // For stairs: ensure the point is far enough OR has significant height difference
+            float heightDifference = Mathf.Abs(pathPoint.y - currentPos.y);
+            bool isGoodDistance = distance > moveOnDistance * 0.8f; // Slightly more lenient
+            bool isStairPoint = heightDifference > 0.4f; // Height difference for stairs
+            
+            if (isGoodDistance || isStairPoint) {
+                currentDistance = distance;
+                Debug.Log($"Arrow pointing to point {i}: distance={distance:F2}, height diff={heightDifference:F2}, isStair={isStairPoint}");
+                return pathPoint;
+            }
         }
         
-        // If we're at or near the last path point, point to final target
-        Debug.Log("Near end of path, pointing to final target");
+        // If no good intermediate point found, use final target
+        Debug.Log("No suitable intermediate point found, pointing to final target");
         return navigationController != null ? navigationController.TargetPosition : Vector3.zero;
     }
 
@@ -100,12 +105,26 @@ public class PathArrowVisualisation : MonoBehaviour {
             arrowPosition.y = navigationYOffset.value;
         }
         
-        // Check distance AFTER applying height offset to avoid false "too close" detection
-        float distanceToTarget = Vector3.Distance(arrowPosition, nextNavigationPoint);
-        if (distanceToTarget < 0.2f) {
-            // If target is too close to the arrow position, hide the arrow
+        // Multiple distance checks to prevent pointing at player
+        float distanceFromPlayer = Vector3.Distance(transform.position, nextNavigationPoint);
+        float distanceFromArrow = Vector3.Distance(arrowPosition, nextNavigationPoint);
+        
+        // If target is too close to either player or arrow position, hide the arrow
+        if (distanceFromPlayer < 0.5f || distanceFromArrow < 0.3f) {
             arrow.SetActive(false);
-            Debug.Log("Arrow hidden - target too close to arrow position");
+            Debug.Log($"Arrow hidden - target too close (player: {distanceFromPlayer:F2}m, arrow: {distanceFromArrow:F2}m)");
+            return;
+        }
+        
+        // Additional check: ensure we're not pointing backwards relative to movement
+        Vector3 directionToTarget = (nextNavigationPoint - transform.position).normalized;
+        Vector3 playerForward = transform.forward;
+        float dotProduct = Vector3.Dot(playerForward, directionToTarget);
+        
+        // If target is significantly behind us, hide arrow
+        if (dotProduct < -0.3f) {
+            arrow.SetActive(false);
+            Debug.Log($"Arrow hidden - target is behind player (dot: {dotProduct:F2})");
             return;
         }
         
@@ -120,7 +139,7 @@ public class PathArrowVisualisation : MonoBehaviour {
         Vector3 direction = nextNavigationPoint - arrowPosition;
         if (direction != Vector3.zero) {
             arrow.transform.LookAt(nextNavigationPoint);
-            Debug.Log($"Arrow pointing from {arrowPosition} to {nextNavigationPoint}, distance: {distanceToTarget:F2}");
+            Debug.Log($"Arrow pointing from {arrowPosition} to {nextNavigationPoint}, distance: {distanceFromArrow:F2}");
         }
     }
 }
