@@ -1,11 +1,13 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 
 public class ArriveDialog : MonoBehaviour
 {
     [Header("Dialog Components")]
     [SerializeField] private GameObject dialogCanvas; // The entire dialog canvas
+    [SerializeField] private GameObject blockingPanel; // Panel to block background interactions
     [SerializeField] private Button continueButton;
     [SerializeField] private Button endButton;
     [SerializeField] private TextMeshProUGUI messageText; // DialogMessage text object
@@ -18,9 +20,16 @@ public class ArriveDialog : MonoBehaviour
     [SerializeField] private float triggerDistance = 1.5f; // Distance to trigger dialog
     [SerializeField] private bool showOnlyOnce = true; // Show dialog only once per target
     
+    [Header("Modal Settings")]
+    [SerializeField] private bool enableModalMode = true; // Enable modal behavior
+    [SerializeField] private Color blockingPanelColor = new Color(0, 0, 0, 0.5f); // Semi-transparent black
+    
     private bool hasShownForCurrentTarget = false;
     private string currentTargetName = "";
     private bool isDialogActive = false;
+    
+    // Modal interaction blocking
+    private static ArriveDialog activeModalDialog = null;
     
     private void Start()
     {
@@ -30,10 +39,40 @@ public class ArriveDialog : MonoBehaviour
             dialogCanvas.SetActive(false);
         }
         
+        // Setup blocking panel if modal mode is enabled
+        SetupBlockingPanel();
+        
         // Setup button listeners
         SetupButtons();
         
         Debug.Log("ArriveDialog initialized");
+    }
+    
+    /// <summary>
+    /// Setup blocking panel for modal behavior
+    /// </summary>
+    private void SetupBlockingPanel()
+    {
+        if (!enableModalMode) return;
+        
+        if (blockingPanel == null)
+        {
+            Debug.LogWarning("Blocking panel not assigned - modal functionality will be limited");
+            return;
+        }
+        
+        // Ensure blocking panel is initially hidden
+        blockingPanel.SetActive(false);
+        
+        // Setup blocking panel properties if it has an Image component
+        var panelImage = blockingPanel.GetComponent<UnityEngine.UI.Image>();
+        if (panelImage != null)
+        {
+            panelImage.color = blockingPanelColor;
+            panelImage.raycastTarget = true; // Block raycast events
+        }
+        
+        Debug.Log("Blocking panel setup complete");
     }
     
     private void SetupButtons()
@@ -100,6 +139,9 @@ public class ArriveDialog : MonoBehaviour
             dialogCanvas.SetActive(true);
             isDialogActive = true;
             
+            // Enable modal blocking if configured
+            EnableModalBlocking();
+            
             // Update message text if available
             if (messageText != null)
             {
@@ -130,6 +172,10 @@ public class ArriveDialog : MonoBehaviour
         {
             dialogCanvas.SetActive(false);
             isDialogActive = false;
+            
+            // Disable modal blocking
+            DisableModalBlocking();
+            
             Debug.Log("Arrival dialog hidden");
         }
     }
@@ -221,5 +267,63 @@ public class ArriveDialog : MonoBehaviour
     public void HideDialog()
     {
         HideArrivalDialog();
+    }
+    
+    /// <summary>
+    /// Enable modal blocking to prevent interactions with other objects
+    /// </summary>
+    private void EnableModalBlocking()
+    {
+        if (!enableModalMode) return;
+        
+        // Set this as the active modal dialog
+        activeModalDialog = this;
+        
+        // Show blocking panel
+        if (blockingPanel != null)
+        {
+            blockingPanel.SetActive(true);
+            Debug.Log("Modal blocking enabled - background interactions blocked");
+        }
+        
+        // Block input events (you can extend this based on your input system)
+        Time.timeScale = 1f; // Keep time running but block other interactions
+    }
+    
+    /// <summary>
+    /// Disable modal blocking to restore normal interactions
+    /// </summary>
+    private void DisableModalBlocking()
+    {
+        if (!enableModalMode) return;
+        
+        // Clear active modal dialog
+        if (activeModalDialog == this)
+        {
+            activeModalDialog = null;
+        }
+        
+        // Hide blocking panel
+        if (blockingPanel != null)
+        {
+            blockingPanel.SetActive(false);
+            Debug.Log("Modal blocking disabled - background interactions restored");
+        }
+    }
+    
+    /// <summary>
+    /// Check if any modal dialog is currently blocking interactions
+    /// </summary>
+    public static bool IsAnyDialogModalActive()
+    {
+        return activeModalDialog != null && activeModalDialog.isDialogActive;
+    }
+    
+    /// <summary>
+    /// Check if a specific interaction should be blocked by modal dialog
+    /// </summary>
+    public static bool ShouldBlockInteraction()
+    {
+        return IsAnyDialogModalActive();
     }
 }

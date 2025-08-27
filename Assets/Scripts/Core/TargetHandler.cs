@@ -535,6 +535,13 @@ public class TargetHandler : MonoBehaviour
         if (navigationSoundController == null || navigationController == null)
             return;
             
+        // Don't give navigation instructions if arrival dialog is active
+        if (arriveDialog != null && arriveDialog.IsDialogActive())
+        {
+            Debug.Log("Arrival dialog is active - skipping navigation instructions");
+            return;
+        }
+            
         // Only check direction periodically to avoid spam
         if (Time.time - lastDirectionCheckTime < directionCheckInterval)
             return;
