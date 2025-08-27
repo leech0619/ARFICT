@@ -11,6 +11,10 @@ public class ArriveTargetSound : MonoBehaviour
     [SerializeField] private float volume = 1.0f;
     [SerializeField] private bool playOnlyOnce = true; // Play sound only once per target
     
+    [Header("Mobile Vibration")]
+    [SerializeField] private bool enableVibration = true; // Enable vibration for mobile devices
+    [SerializeField] private float vibrationDuration = 0.5f; // Duration of vibration (Android only)
+    
     private bool hasPlayedForCurrentTarget = false;
     private string currentTargetName = "";
     private Vector3 lastTargetPosition = Vector3.zero;

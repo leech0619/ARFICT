@@ -24,14 +24,26 @@ public class TargetHandler : MonoBehaviour
     private ArriveDialog arriveDialog; // Dialog component for arrival notifications
     
     [SerializeField]
-    private float rerouteCheckInterval = 2.0f; // How often to check for closer targets (in seconds)
+    private ArriveTargetVibrate arriveTargetVibrate; // Vibration component for arrival notifications
     
     [SerializeField]
-    private float rerouteDistanceThreshold = 5.0f; // Minimum distance difference to trigger reroute
+    private NavigationSoundController navigationSoundController; // Sound controller for turn instructions
+    
+    [SerializeField]
+    private float rerouteCheckInterval = 1.0f; // How often to check for closer targets (in seconds)
+    
+    [SerializeField]
+    private float rerouteDistanceThreshold = 2.0f; // Minimum distance difference to trigger reroute
     
     private string currentTargetName = ""; // Track current target name for rerouting
     private bool isNavigationActive = false;
     private Coroutine rerouteCoroutine;
+    
+    // Navigation direction tracking
+    private Vector3 lastUserPosition = Vector3.zero;
+    private Vector3 lastDirection = Vector3.zero;
+    private float lastDirectionCheckTime = 0f;
+    private float directionCheckInterval = 1f; // Check direction every 1 second
 
     private void Start()
     {
@@ -113,6 +125,18 @@ public class TargetHandler : MonoBehaviour
         if (arriveDialog != null)
         {
             arriveDialog.ResetDialogState();
+        }
+        
+        // Reset arrival vibration state
+        if (arriveTargetVibrate != null)
+        {
+            arriveTargetVibrate.ResetVibrateState();
+        }
+        
+        // Reset navigation sound state
+        if (navigationSoundController != null)
+        {
+            navigationSoundController.ResetNavigationSoundState();
         }
     }
 
@@ -197,6 +221,14 @@ public class TargetHandler : MonoBehaviour
                 if (arriveDialog != null && !string.IsNullOrEmpty(currentTargetName))
                 {
                     arriveDialog.CheckArrival(distance, currentTargetName);
+                }
+                
+                // Check for arrival vibration trigger
+                if (arriveTargetVibrate != null && !string.IsNullOrEmpty(currentTargetName) && navigationController != null)
+                {
+                    Vector3 userPosition = navigationController.transform.position;
+                    Vector3 targetPosition = navigationController.TargetPosition;
+                    arriveTargetVibrate.CheckArrival(distance, currentTargetName, userPosition, targetPosition);
                 }
             }
             else
@@ -394,6 +426,20 @@ public class TargetHandler : MonoBehaviour
                 // Use direct distance for dialog detection
                 arriveDialog.CheckArrival(directDistance, currentTargetName);
             }
+            
+            // Check direct distance for arrival vibration (more accurate for close proximity)
+            if (arriveTargetVibrate != null && !string.IsNullOrEmpty(currentTargetName))
+            {
+                Vector3 userPosition = navigationController.transform.position;
+                Vector3 targetPosition = navigationController.TargetPosition;
+                float directDistance = Vector3.Distance(userPosition, targetPosition);
+                
+                // Use direct distance for vibration detection
+                arriveTargetVibrate.CheckArrival(directDistance, currentTargetName, userPosition, targetPosition);
+            }
+            
+            // Check for navigation direction changes and play turn instructions
+            CheckNavigationDirection();
         }
     }
     
@@ -479,5 +525,88 @@ public class TargetHandler : MonoBehaviour
     {
         StopContinuousRerouting();
         currentTargetName = "";
+    }
+    
+    /// <summary>
+    /// Check navigation direction and play turn instructions
+    /// </summary>
+    private void CheckNavigationDirection()
+    {
+        if (navigationSoundController == null || navigationController == null)
+            return;
+            
+        // Only check direction periodically to avoid spam
+        if (Time.time - lastDirectionCheckTime < directionCheckInterval)
+            return;
+            
+        Vector3 currentUserPosition = navigationController.transform.position;
+        
+        // Skip if user hasn't moved significantly
+        if (Vector3.Distance(currentUserPosition, lastUserPosition) < 0.5f)
+            return;
+            
+        // Use the NavigationController's CalculatedPath instead of NavMeshAgent
+        var calculatedPath = navigationController.CalculatedPath;
+        if (calculatedPath == null || calculatedPath.corners.Length < 2)
+        {
+            Debug.Log("NavigationSoundController: No valid path found in NavigationController.");
+            return;
+        }
+            
+        // Find the next waypoint in the path that's ahead of current position
+        Vector3 nextWaypoint = Vector3.zero;
+        bool foundNextWaypoint = false;
+        
+        for (int i = 0; i < calculatedPath.corners.Length - 1; i++)
+        {
+            float distanceToCorner = Vector3.Distance(currentUserPosition, calculatedPath.corners[i]);
+            if (distanceToCorner > 1.0f) // Look for waypoints that are at least 1 meter away
+            {
+                nextWaypoint = calculatedPath.corners[i];
+                foundNextWaypoint = true;
+                break;
+            }
+        }
+        
+        // If no distant waypoint found, use the final destination
+        if (!foundNextWaypoint && calculatedPath.corners.Length > 0)
+        {
+            nextWaypoint = calculatedPath.corners[calculatedPath.corners.Length - 1];
+            foundNextWaypoint = true;
+        }
+        
+        if (!foundNextWaypoint)
+        {
+            return;
+        }
+        
+        // Calculate direction to next waypoint
+        Vector3 directionToWaypoint = (nextWaypoint - currentUserPosition).normalized;
+        
+        // Remove Y component for 2D direction calculation
+        directionToWaypoint.y = 0;
+        
+        // Calculate user's forward direction (assuming user faces movement direction)
+        Vector3 userMovementDirection = (currentUserPosition - lastUserPosition).normalized;
+        userMovementDirection.y = 0;
+        
+        // Only calculate turn if we have a valid movement direction
+        if (userMovementDirection.magnitude > 0.1f)
+        {
+            // Calculate angle between movement direction and required direction
+            float angle = Vector3.SignedAngle(userMovementDirection, directionToWaypoint, Vector3.up);
+            
+            // Only give instructions for significant direction changes
+            if (Mathf.Abs(angle) > 15f) // 15 degree threshold
+            {
+                navigationSoundController.PlayDirectionInstruction(angle);
+                Debug.Log($"Navigation instruction: angle = {angle:F1}°");
+            }
+        }
+        
+        // Update tracking variables
+        lastUserPosition = currentUserPosition;
+        lastDirection = directionToWaypoint;
+        lastDirectionCheckTime = Time.time;
     }
 }

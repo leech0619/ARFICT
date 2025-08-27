@@ -13,10 +13,27 @@ public class PathArrowVisualisation : MonoBehaviour {
     [SerializeField]
     private float moveOnDistance;
 
+    [Header("Stabilization Settings")]
+    [SerializeField]
+    private float positionSmoothSpeed = 5f; // How fast position changes are smoothed
+    [SerializeField]
+    private float rotationSmoothSpeed = 8f; // How fast rotation changes are smoothed
+    [SerializeField]
+    private float updateInterval = 0.1f; // How often to recalculate target (in seconds)
+    [SerializeField]
+    private float minimumMovementThreshold = 0.02f; // Minimum movement to trigger update
+
     private NavMeshPath path;
     private float currentDistance;
     private Vector3[] pathOffset;
     private Vector3 nextNavigationPoint = Vector3.zero;
+    
+    // Stabilization variables
+    private Vector3 targetArrowPosition;
+    private Quaternion targetArrowRotation;
+    private Vector3 lastPlayerPosition;
+    private float lastUpdateTime;
+    private bool hasValidTarget = false;
 
     private void Update() {
         if (navigationController == null) return;
@@ -26,16 +43,25 @@ public class PathArrowVisualisation : MonoBehaviour {
             if (arrow != null) {
                 arrow.SetActive(false);
             }
+            hasValidTarget = false;
             return;
         }
         
-        if (arrow != null && !arrow.activeInHierarchy) {
-            arrow.SetActive(true);
+        // Only recalculate target periodically or when player moves significantly
+        bool shouldUpdate = Time.time - lastUpdateTime > updateInterval ||
+                           Vector3.Distance(transform.position, lastPlayerPosition) > minimumMovementThreshold;
+        
+        if (shouldUpdate) {
+            AddOffsetToPath();
+            SelectNextNavigationPoint();
+            CalculateTargetArrowTransform();
+            
+            lastUpdateTime = Time.time;
+            lastPlayerPosition = transform.position;
         }
-
-        AddOffsetToPath();
-        SelectNextNavigationPoint();
-        UpdateArrowForSlope();
+        
+        // Always smooth the arrow movement
+        SmoothArrowMovement();
     }
 
     private void AddOffsetToPath() {
@@ -94,8 +120,11 @@ public class PathArrowVisualisation : MonoBehaviour {
         return navigationController != null ? navigationController.TargetPosition : Vector3.zero;
     }
 
-    private void UpdateArrowForSlope() {
-        if (arrow == null || nextNavigationPoint == Vector3.zero) return;
+    private void CalculateTargetArrowTransform() {
+        if (arrow == null || nextNavigationPoint == Vector3.zero) {
+            hasValidTarget = false;
+            return;
+        }
         
         // Position arrow in front of the camera/player so it's visible
         Vector3 arrowPosition = transform.position + transform.forward * 1f; // 1 meter in front
@@ -111,7 +140,7 @@ public class PathArrowVisualisation : MonoBehaviour {
         
         // If target is too close to either player or arrow position, hide the arrow
         if (distanceFromPlayer < 0.5f || distanceFromArrow < 0.3f) {
-            arrow.SetActive(false);
+            hasValidTarget = false;
             Debug.Log($"Arrow hidden - target too close (player: {distanceFromPlayer:F2}m, arrow: {distanceFromArrow:F2}m)");
             return;
         }
@@ -123,23 +152,52 @@ public class PathArrowVisualisation : MonoBehaviour {
         
         // If target is significantly behind us, hide arrow
         if (dotProduct < -0.3f) {
-            arrow.SetActive(false);
+            hasValidTarget = false;
             Debug.Log($"Arrow hidden - target is behind player (dot: {dotProduct:F2})");
             return;
         }
         
-        // Ensure arrow is active
-        if (!arrow.activeInHierarchy) {
-            arrow.SetActive(true);
-        }
+        // Calculate target transform
+        targetArrowPosition = arrowPosition;
         
-        arrow.transform.position = arrowPosition;
-        
-        // Simple slope-aware rotation
+        // Calculate target rotation
         Vector3 direction = nextNavigationPoint - arrowPosition;
         if (direction != Vector3.zero) {
-            arrow.transform.LookAt(nextNavigationPoint);
-            Debug.Log($"Arrow pointing from {arrowPosition} to {nextNavigationPoint}, distance: {distanceFromArrow:F2}");
+            targetArrowRotation = Quaternion.LookRotation(direction);
+            hasValidTarget = true;
+            Debug.Log($"Arrow target calculated - pointing from {arrowPosition} to {nextNavigationPoint}, distance: {distanceFromArrow:F2}");
+        } else {
+            hasValidTarget = false;
         }
+    }
+    
+    private void SmoothArrowMovement() {
+        if (arrow == null) return;
+        
+        if (!hasValidTarget) {
+            arrow.SetActive(false);
+            return;
+        }
+        
+        if (!arrow.activeInHierarchy) {
+            arrow.SetActive(true);
+            // Initialize smooth values when arrow becomes active
+            arrow.transform.position = targetArrowPosition;
+            arrow.transform.rotation = targetArrowRotation;
+            return;
+        }
+        
+        // Smoothly interpolate position and rotation
+        arrow.transform.position = Vector3.Lerp(
+            arrow.transform.position, 
+            targetArrowPosition, 
+            positionSmoothSpeed * Time.deltaTime
+        );
+        
+        arrow.transform.rotation = Quaternion.Slerp(
+            arrow.transform.rotation, 
+            targetArrowRotation, 
+            rotationSmoothSpeed * Time.deltaTime
+        );
     }
 }

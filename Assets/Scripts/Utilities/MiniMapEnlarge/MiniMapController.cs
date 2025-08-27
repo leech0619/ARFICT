@@ -110,7 +110,7 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
                 closeButton.ShowButton();
             }
             
-            Debug.Log("Minimap enlargement completed");
+            Debug.Log($"Minimap enlargement completed - Final camera position: {topDownCamera.transform.position}");
         }
     }
 
@@ -184,6 +184,8 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
     {
         if (topDownCamera == null) return;
         
+        Debug.Log($"AdjustCameraPositionForZoom called - Current camera Y: {topDownCamera.transform.position.y}");
+        
         Vector3 currentPosition = topDownCamera.transform.position;
         
         // Calculate dynamic boundaries based on current zoom level
@@ -240,8 +242,9 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
             // Update logical position
             logicalCameraPosition = newLogicalPosition;
             
-            // Set actual camera position - use logical X and Z, keep Y at 5 for top-down view
-            Vector3 actualCameraPosition = new Vector3(newLogicalPosition.x, 5f, newLogicalPosition.z);
+            // Set actual camera position - use logical X and Z, maintain current Y position
+            float currentY = topDownCamera.transform.position.y; // Keep the Y that was set in AdjustCameraForFullscreen
+            Vector3 actualCameraPosition = new Vector3(newLogicalPosition.x, currentY, newLogicalPosition.z);
             topDownCamera.transform.position = actualCameraPosition;
             
             Debug.Log($"Logical position: X: {newLogicalPosition.x:F1}, Z: {newLogicalPosition.z:F1}");
@@ -359,7 +362,7 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
         if (arCamera != null)
         {
             Vector3 arCameraPosition = arCamera.transform.position;
-            Vector3 newPosition = new Vector3(arCameraPosition.x, 5f, -8f);
+            Vector3 newPosition = new Vector3(arCameraPosition.x, arCameraPosition.y + 5f, -8f);
             topDownCamera.transform.position = newPosition;
             
             // Use AR camera position as starting point but set proper map center for boundaries
