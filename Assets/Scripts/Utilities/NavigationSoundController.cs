@@ -16,11 +16,14 @@ public class NavigationSoundController : MonoBehaviour
     public bool enableNavigationSounds = true;
     
     [Header("Sound Timing")]
-    public float instructionCooldown = 2f; // Minimum time between instructions
+    public float instructionCooldown = 3f; // Minimum time between ANY instructions (increased from 2f)
+    public float sameInstructionCooldown = 5f; // Extra cooldown for repeating the same instruction
+    public float minimumMovementDistance = 2f; // Minimum distance user must move before next instruction
     
     // Private variables
     private float lastInstructionTime = 0f;
     private string lastInstruction = "";
+    private Vector3 lastInstructionPosition = Vector3.zero;
     
     // Sound controller reference for mute checking
     private SoundController soundController;
@@ -170,9 +173,28 @@ public class NavigationSoundController : MonoBehaviour
         
         // Check cooldown to prevent spam
         float currentTime = Time.time;
-        if (currentTime - lastInstructionTime < instructionCooldown && lastInstruction == instruction)
+        float timeSinceLastInstruction = currentTime - lastInstructionTime;
+        Vector3 currentPosition = Camera.main != null ? Camera.main.transform.position : transform.position;
+        float distanceSinceLastInstruction = Vector3.Distance(currentPosition, lastInstructionPosition);
+        
+        // Check if we're in the general cooldown period (blocks ALL instructions)
+        if (timeSinceLastInstruction < instructionCooldown)
         {
-            Debug.Log($"Instruction cooldown active - skipping repeated: {instruction}");
+            Debug.Log($"General instruction cooldown active - skipping: {instruction} (last played {timeSinceLastInstruction:F1}s ago)");
+            return;
+        }
+        
+        // Extra cooldown for repeating the same instruction
+        if (lastInstruction == instruction && timeSinceLastInstruction < sameInstructionCooldown)
+        {
+            Debug.Log($"Same instruction cooldown active - skipping repeated: {instruction} (last played {timeSinceLastInstruction:F1}s ago)");
+            return;
+        }
+        
+        // Check if user has moved enough since last instruction (prevents spam when standing still)
+        if (lastInstructionPosition != Vector3.zero && distanceSinceLastInstruction < minimumMovementDistance)
+        {
+            Debug.Log($"Insufficient movement - skipping: {instruction} (moved {distanceSinceLastInstruction:F1}m, need {minimumMovementDistance}m)");
             return;
         }
         
@@ -185,8 +207,9 @@ public class NavigationSoundController : MonoBehaviour
             
             lastInstructionTime = currentTime;
             lastInstruction = instruction;
+            lastInstructionPosition = currentPosition;
             
-            Debug.Log($"Playing navigation instruction: {instruction}");
+            Debug.Log($"Playing navigation instruction: {instruction} at position {currentPosition}");
         }
         else
         {
@@ -243,6 +266,7 @@ public class NavigationSoundController : MonoBehaviour
     {
         lastInstructionTime = 0f;
         lastInstruction = "";
+        lastInstructionPosition = Vector3.zero;
         Debug.Log("Navigation instruction cooldown reset");
     }
     

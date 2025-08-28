@@ -109,8 +109,18 @@ public class ArriveDialog : MonoBehaviour
         if (!string.IsNullOrEmpty(targetName) && targetName != currentTargetName)
         {
             currentTargetName = targetName;
-            hasShownForCurrentTarget = false;
-            Debug.Log($"New target detected for dialog: {targetName}");
+            // Only reset if we're NOT already close to the new target
+            // This prevents immediate dialog showing when selecting nearby targets
+            if (distanceToTarget > triggerDistance)
+            {
+                hasShownForCurrentTarget = false;
+            }
+            else
+            {
+                // We're already close to this new target, mark as already shown
+                hasShownForCurrentTarget = true;
+            }
+            Debug.Log($"New target detected for dialog: {targetName} (distance: {distanceToTarget:F2}m)");
         }
         
         // Check if user has arrived and dialog should be shown
@@ -181,12 +191,18 @@ public class ArriveDialog : MonoBehaviour
     }
     
     /// <summary>
-    /// Continue button clicked - just close the dialog
+    /// Continue button clicked - close dialog and reset target state
     /// </summary>
     private void OnContinueButtonClicked()
     {
-        Debug.Log("Continue button clicked - closing dialog only");
+        Debug.Log("Continue button clicked - closing dialog and resetting target state");
+        
+        // Close the dialog first
         HideArrivalDialog();
+        
+        // Reset target state so dialog can work properly for new targets
+        hasShownForCurrentTarget = false;
+        currentTargetName = "";
     }
     
     /// <summary>
