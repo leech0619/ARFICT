@@ -3,16 +3,19 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
+/// <summary>
+/// Manages target selection, navigation, and arrival feedback
+/// </summary>
 public class TargetHandler : MonoBehaviour
 {
     [SerializeField]
-    private NavigationController navigationController;
+    private NavigationController navigationController; // Path calculation controller
     
     [SerializeField]
-    private TMP_Dropdown targetDataDropdown;
+    private TMP_Dropdown targetDataDropdown; // UI dropdown for target selection
     
     [SerializeField]
-    private List<Target> navigationTargetObjects = new List<Target>();
+    private List<Target> navigationTargetObjects = new List<Target>(); // Available navigation targets
 
     [SerializeField]
     private TextMeshProUGUI distanceLabel; // UI label for distance display
@@ -35,6 +38,7 @@ public class TargetHandler : MonoBehaviour
     [SerializeField]
     private float rerouteDistanceThreshold = 2.0f; // Minimum distance difference to trigger reroute
     
+    // State tracking variables
     private string currentTargetName = ""; // Track current target name for rerouting
     private bool isNavigationActive = false;
     private Coroutine rerouteCoroutine;
@@ -47,15 +51,14 @@ public class TargetHandler : MonoBehaviour
 
     private void Start()
     {
-        DeactivateAllTargets();
+        DeactivateAllTargets(); // Hide all targets initially
     }
 
     public void SetSelectedTargetPositionWithDropdown(int selectedValue)
     {
-        // Check if "SELECT" placeholder is selected (typically index 0)
+        // Check if "SELECT" placeholder is selected
         if (IsSelectPlaceholder(selectedValue))
         {
-            // "SELECT" placeholder selected - clear all navigation
             ClearAllNavigation();
             Debug.Log("SELECT placeholder chosen - all navigation cleared");
             return;
@@ -63,15 +66,15 @@ public class TargetHandler : MonoBehaviour
         
         Vector3 targetPosition = GetCurrentlySelectedTarget(selectedValue);
         
-        DeactivateAllTargets();
+        DeactivateAllTargets(); // Hide all target objects
         
         if (targetPosition != Vector3.zero)
         {
             navigationController.TargetPosition = targetPosition;
             
-            ActivateSelectedTarget(selectedValue);
+            ActivateSelectedTarget(selectedValue); // Show selected target
             
-            // Store current target name for rerouting
+            // Store target name and start rerouting system
             if (selectedValue >= 0 && selectedValue < navigationTargetObjects.Count)
             {
                 currentTargetName = navigationTargetObjects[selectedValue].Name;
@@ -86,10 +89,9 @@ public class TargetHandler : MonoBehaviour
         }
     }
     
-    // Helper method to check if the selected value corresponds to "Select" placeholder
+    // Check if selected dropdown option is "Select" placeholder
     private bool IsSelectPlaceholder(int selectedValue)
     {
-        // Check if dropdown has options and the selected option is "Select"
         if (targetDataDropdown != null && 
             selectedValue >= 0 && 
             selectedValue < targetDataDropdown.options.Count)
@@ -161,8 +163,8 @@ public class TargetHandler : MonoBehaviour
             return 0f;
         }
 
+        // Sum distances between all path corners
         float distance = 0f;
-        
         for (int i = 0; i < path.corners.Length - 1; i++)
         {
             distance += Vector3.Distance(path.corners[i], path.corners[i + 1]);
@@ -171,7 +173,7 @@ public class TargetHandler : MonoBehaviour
         return distance;
     }
 
-    // Calculate actual NavMesh path distance to a specific target
+    // Calculate NavMesh path distance to a specific target for rerouting
     private float CalculateNavMeshDistanceToTarget(Vector3 targetPosition)
     {
         if (navigationController == null) return float.MaxValue;
@@ -185,6 +187,7 @@ public class TargetHandler : MonoBehaviour
             
             if (tempPath.corners.Length >= 2)
             {
+                // Sum all corner distances
                 for (int i = 0; i < tempPath.corners.Length - 1; i++)
                 {
                     totalDistance += Vector3.Distance(tempPath.corners[i], tempPath.corners[i + 1]);
@@ -374,6 +377,7 @@ public class TargetHandler : MonoBehaviour
 
     public void ClearAllTargets()
     {
+        // Reset all navigation state
         DeactivateAllTargets();
         StopContinuousRerouting();
         navigationController.TargetPosition = Vector3.zero;
@@ -383,6 +387,7 @@ public class TargetHandler : MonoBehaviour
 
     public int GetActiveTargetIndex()
     {
+        // Find which target is currently active
         for (int i = 0; i < navigationTargetObjects.Count; i++)
         {
             Target target = navigationTargetObjects[i];
@@ -396,6 +401,7 @@ public class TargetHandler : MonoBehaviour
 
     private void Update()
     {
+        // Main navigation update loop
         if (navigationController != null && navigationController.TargetPosition != Vector3.zero)
         {
             float currentDistance = CalculateCurrentPathDistance();
@@ -404,18 +410,17 @@ public class TargetHandler : MonoBehaviour
                 UpdateDistanceLabel(currentDistance);
             }
             
-            // Also check direct distance for arrival sound (more accurate for close proximity)
+            // Check arrival sound using direct distance for accuracy
             if (arriveTargetSound != null && !string.IsNullOrEmpty(currentTargetName))
             {
                 Vector3 userPosition = navigationController.transform.position;
                 Vector3 targetPosition = navigationController.TargetPosition;
                 float directDistance = Vector3.Distance(userPosition, targetPosition);
                 
-                // Use direct distance for arrival detection as it's more accurate for close range
                 arriveTargetSound.CheckArrival(directDistance, currentTargetName, userPosition, targetPosition);
             }
             
-            // Check direct distance for arrival dialog (more accurate for close proximity)
+            // Check arrival dialog using direct distance for accuracy
             if (arriveDialog != null && !string.IsNullOrEmpty(currentTargetName))
             {
                 float directDistance = Vector3.Distance(
@@ -423,7 +428,6 @@ public class TargetHandler : MonoBehaviour
                     navigationController.TargetPosition
                 );
                 
-                // Use direct distance for dialog detection
                 arriveDialog.CheckArrival(directDistance, currentTargetName);
             }
             
@@ -534,13 +538,6 @@ public class TargetHandler : MonoBehaviour
     {
         if (navigationSoundController == null || navigationController == null)
             return;
-            
-        // Don't give navigation instructions if arrival dialog is active
-        if (arriveDialog != null && arriveDialog.IsDialogActive())
-        {
-            Debug.Log("Arrival dialog is active - skipping navigation instructions");
-            return;
-        }
             
         // Only check direction periodically to avoid spam
         if (Time.time - lastDirectionCheckTime < directionCheckInterval)

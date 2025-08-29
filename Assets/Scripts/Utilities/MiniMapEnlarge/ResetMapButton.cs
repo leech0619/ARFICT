@@ -1,53 +1,40 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Legacy minimap reset button - now delegates to MiniMapController
+/// </summary>
 public class ResetMapButton : MonoBehaviour
 {
-    public RectTransform minimapRectTransform;
-    public Camera topDownCamera;
-    public float originalCameraHeight = 5.0f;
-    public CloseButton closeButton;
-    public MiniMapController miniMapController;
+    public RectTransform minimapRectTransform; // Minimap UI component
+    public Camera topDownCamera; // Minimap camera
+    public float originalCameraHeight = 5.0f; // Default camera height
+    public CloseButton closeButton; // Close button reference
+    public MiniMapController miniMapController; // Main controller (preferred method)
 
+    // Original state storage for fallback
     private Vector2 originalSize;
     private Vector2 originalAnchoredPosition;
 
     void Start()
     {
+        // Store original minimap layout for restoration
         originalSize = minimapRectTransform.sizeDelta;
         originalAnchoredPosition = minimapRectTransform.anchoredPosition;
     }
 
-    // Updated method to work with MiniMapController
+    // Delegates to MiniMapController for consistent behavior
     public void ToggleMapSize()
     {
         if (miniMapController.isFullscreen)
         {
-            // Use MiniMapController's restore method instead
+            // Use main controller's restore method
             miniMapController.RestoreMinimap();
         }
         else
         {
-            // This should not be called since clicking is handled by MiniMapController
-            // But keeping for compatibility
+            // Enlargement handled by MiniMapController click detection
             Debug.Log("Use MiniMapController for enlargement");
         }
-    }
-
-    // Keep these methods for backward compatibility if needed elsewhere
-    private void ResetMapSizeAndPosition()
-    {
-        minimapRectTransform.sizeDelta = originalSize;
-        minimapRectTransform.anchoredPosition = originalAnchoredPosition;
-    }
-
-    private void ResetCameraHeight()
-    {
-        topDownCamera.transform.position = new Vector3(0, originalCameraHeight, 0);
-    }
-
-    private void IncreaseCameraHeight()
-    {
-        topDownCamera.transform.position += Vector3.up * (originalCameraHeight - topDownCamera.transform.position.y);
     }
 }

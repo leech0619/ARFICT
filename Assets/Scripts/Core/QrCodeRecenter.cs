@@ -7,26 +7,31 @@ using UnityEngine.XR.ARSubsystems;
 using Unity.XR.CoreUtils;
 using ZXing;
 
+/// <summary>
+/// Scans QR codes and recenters AR session to target locations
+/// </summary>
 public class QrCodeRecenter : MonoBehaviour
 {
+    // Component references
+    [SerializeField]
+    private ARSession session; // AR session for reset functionality
+    [SerializeField]
+    private XROrigin sessionOrigin; // AR origin to reposition during recentering
+    [SerializeField]
+    private ARCameraManager cameraManager; // Camera manager for frame capture
+    [SerializeField]
+    private TargetHandler targetHandler; // Handler to find targets by QR code text
+    [SerializeField]
+    private GameObject qrCodeScanningPanel; // UI panel shown during QR scanning
 
-    [SerializeField]
-    private ARSession session;
-    [SerializeField]
-    private XROrigin sessionOrigin;
-    [SerializeField]
-    private ARCameraManager cameraManager;
-    [SerializeField]
-    private TargetHandler targetHandler;
-    [SerializeField]
-    private GameObject qrCodeScanningPanel;
-
-    private Texture2D cameraImageTexture;
-    private IBarcodeReader reader = new BarcodeReader(); // create a barcode reader instance
-    private bool scanningEnabled = false;
+    // QR code scanning variables
+    private Texture2D cameraImageTexture; // Texture for processing camera frames
+    private IBarcodeReader reader = new BarcodeReader(); // ZXing QR code reader
+    private bool scanningEnabled = false; // Controls whether QR scanning is active
 
     private void Update()
     {
+        // Debug: Space key for testing QR code recentering without actual QR scan
         if (Input.GetKeyDown(KeyCode.Space))
         {
             SetQrCodeRecenterTarget("MainEntrance");
@@ -35,58 +40,42 @@ public class QrCodeRecenter : MonoBehaviour
 
     private void OnEnable()
     {
+        // Subscribe to camera frame events for QR code detection
         cameraManager.frameReceived += OnCameraFrameReceived;
     }
 
     private void OnDisable()
     {
+        // Unsubscribe from camera frame events to prevent memory leaks
         cameraManager.frameReceived -= OnCameraFrameReceived;
     }
 
+    /// <summary>
+    /// Processes camera frames to detect QR codes when scanning is enabled
+    /// </summary>
     private void OnCameraFrameReceived(ARCameraFrameEventArgs eventArgs)
     {
-        if (!scanningEnabled)
-        {
-            return;
-        }
+        if (!scanningEnabled) return;
 
-        if (!cameraManager.TryAcquireLatestCpuImage(out XRCpuImage image))
-        {
-            return;
-        }
+        // Try to get latest camera image for QR code detection
+        if (!cameraManager.TryAcquireLatestCpuImage(out XRCpuImage image)) return;
 
+        // Setup image conversion for QR detection
         var conversionParams = new XRCpuImage.ConversionParams
         {
-            // Get the entire image.
             inputRect = new RectInt(0, 0, image.width, image.height),
-
-            // Downsample by 2.
-            outputDimensions = new Vector2Int(image.width / 2, image.height / 2),
-
-            // Choose RGBA format.
+            outputDimensions = new Vector2Int(image.width / 2, image.height / 2), // Downsample for performance
             outputFormat = TextureFormat.RGBA32,
-
-            // Flip across the vertical axis (mirror image).
             transformation = XRCpuImage.Transformation.MirrorY
         };
 
-        // See how many bytes you need to store the final image.
         int size = image.GetConvertedDataSize(conversionParams);
-
-        // Allocate a buffer to store the image.
         var buffer = new NativeArray<byte>(size, Allocator.Temp);
 
-        // Extract the image data
+        // Convert camera image to texture for QR scanning
         image.Convert(conversionParams, buffer);
-
-        // The image was converted to RGBA32 format and written into the provided buffer
-        // so you can dispose of the XRCpuImage. You must do this or it will leak resources.
         image.Dispose();
 
-        // At this point, you can process the image, pass it to a computer vision algorithm, etc.
-        // In this example, you apply it to a texture to visualize it.
-
-        // You've got the data; let's put it into a texture so you can visualize it.
         cameraImageTexture = new Texture2D(
             conversionParams.outputDimensions.x,
             conversionParams.outputDimensions.y,
@@ -95,35 +84,36 @@ public class QrCodeRecenter : MonoBehaviour
 
         cameraImageTexture.LoadRawTextureData(buffer);
         cameraImageTexture.Apply();
-
-        // Done with your temporary data, so you can dispose it.
         buffer.Dispose();
 
-        // Detect and decode the barcode inside the bitmap
+        // Attempt QR code detection in the processed image
         var result = reader.Decode(cameraImageTexture.GetPixels32(), cameraImageTexture.width, cameraImageTexture.height);
 
-        // Do something with the result
         if (result != null)
         {
             SetQrCodeRecenterTarget(result.Text);
-            ToggleScanning();
+            ToggleScanning(); // Stop scanning after successful detection
         }
     }
 
+    /// <summary>
+    /// Recenters AR session to the target location specified by QR code text
+    /// </summary>
     private void SetQrCodeRecenterTarget(string targetText)
     {
         Target currentTarget = targetHandler.GetCurrentTargetByTargetText(targetText);
         if (currentTarget != null)
         {
-            // Reset position and rotation of ARSession
+            // Reset AR session and move origin to target location
             session.Reset();
-
-            // Add offset for recentering
             sessionOrigin.transform.position = currentTarget.PositionObject.transform.position;
             sessionOrigin.transform.rotation = currentTarget.PositionObject.transform.rotation;
         }
     }
 
+    /// <summary>
+    /// Toggles QR code scanning on/off and shows/hides scanning UI
+    /// </summary>
     public void ToggleScanning()
     {
         scanningEnabled = !scanningEnabled;

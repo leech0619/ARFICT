@@ -1,31 +1,34 @@
 using UnityEngine;
 
+/// <summary>
+/// Handles close button functionality for enlarged minimap
+/// </summary>
 public class CloseButton : MonoBehaviour
 {
-    public ResetMapButton resetMapButton;
-    public MiniMapController miniMapController; // Add direct reference to MiniMapController
+    public ResetMapButton resetMapButton; // Fallback reference for map reset
+    public MiniMapController miniMapController; // Main controller for minimap operations
 
     public void OnCloseButtonClick()
     {
-        // Use MiniMapController's restore method for consistent behavior
+        // Restore minimap to normal size using primary method
         if (miniMapController != null)
         {
             miniMapController.RestoreMinimap();
         }
         else if (resetMapButton != null)
         {
-            // Fallback to old method
+            // Fallback to legacy method if primary controller unavailable
             resetMapButton.ToggleMapSize();
         }
     }
 
     public void HideButton()
     {
-        gameObject.SetActive(false);
+        gameObject.SetActive(false); // Hide close button
     }
 
     public void ShowButton()
     {
-        gameObject.SetActive(true);
+        gameObject.SetActive(true); // Show close button
     }
 }

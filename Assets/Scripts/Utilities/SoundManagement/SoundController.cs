@@ -3,27 +3,30 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Controls global sound muting/unmuting with UI button management
+/// </summary>
 public class SoundController : MonoBehaviour
 {
     [Header("Sound Button References")]
-    public GameObject soundOnButton;  // Button shown when sound is ON (not muted)
-    public GameObject soundOffButton; // Button shown when sound is OFF (muted)
+    public GameObject soundOnButton;  // Button displayed when sound is enabled (clickable to mute)
+    public GameObject soundOffButton; // Button displayed when sound is muted (clickable to unmute)
     
     [Header("Sound Settings")]
-    public bool isSoundMuted = false; // Current sound state
+    public bool isSoundMuted = false; // Current global sound state
     
-    // Store original volume to restore when unmuting
-    private float originalVolume = 1f;
+    // Volume management
+    private float originalVolume = 1f; // Stores original volume level for restoration when unmuting
     
     void Start()
     {
-        // Store the original volume
+        // Store the original volume level for restoration
         originalVolume = AudioListener.volume;
         
-        // Initialize button states based on current sound state
+        // Set initial button visibility based on current sound state
         UpdateButtonStates();
         
-        // Add button click listeners
+        // Set up button click event listeners
         if (soundOnButton != null)
         {
             Button onButton = soundOnButton.GetComponent<Button>();
@@ -46,7 +49,7 @@ public class SoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Mute the sound (called when SoundOnButton is clicked)
+    /// Mutes all game audio (called when sound-on button is clicked)
     /// </summary>
     public void MuteSound()
     {
@@ -57,7 +60,7 @@ public class SoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Unmute the sound (called when SoundOffButton is clicked)
+    /// Unmutes all game audio (called when sound-off button is clicked)
     /// </summary>
     public void UnmuteSound()
     {
@@ -68,7 +71,7 @@ public class SoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Toggle sound state (alternative method for external calls)
+    /// Toggles between muted and unmuted state (alternative method for external calls)
     /// </summary>
     public void ToggleSound()
     {
@@ -83,25 +86,25 @@ public class SoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Update button visibility based on current sound state
+    /// Updates button visibility based on current sound state
     /// </summary>
     private void UpdateButtonStates()
     {
         if (soundOnButton != null)
         {
-            soundOnButton.SetActive(!isSoundMuted); // Show when sound is ON (not muted)
+            soundOnButton.SetActive(!isSoundMuted); // Show when sound is enabled (not muted)
         }
         
         if (soundOffButton != null)
         {
-            soundOffButton.SetActive(isSoundMuted); // Show when sound is OFF (muted)
+            soundOffButton.SetActive(isSoundMuted); // Show when sound is muted
         }
         
         Debug.Log($"Button states updated - SoundOn visible: {!isSoundMuted}, SoundOff visible: {isSoundMuted}");
     }
     
     /// <summary>
-    /// Get current sound state
+    /// Returns the current global sound mute state
     /// </summary>
     public bool IsSoundMuted()
     {
@@ -109,12 +112,13 @@ public class SoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Set sound state directly (useful for loading saved preferences)
+    /// Sets sound state directly (useful for loading saved preferences)
     /// </summary>
     public void SetSoundState(bool muted)
     {
         isSoundMuted = muted;
         
+        // Apply the sound state immediately
         if (isSoundMuted)
         {
             AudioListener.volume = 0f;

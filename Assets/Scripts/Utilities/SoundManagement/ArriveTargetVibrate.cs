@@ -1,5 +1,8 @@
 using UnityEngine;
 
+/// <summary>
+/// Triggers device vibration when the user arrives at a navigation target
+/// </summary>
 public class ArriveTargetVibrate : MonoBehaviour
 {
     [Header("Vibration Settings")]
@@ -7,37 +10,42 @@ public class ArriveTargetVibrate : MonoBehaviour
     [SerializeField] private bool vibrateOnlyOnce = true; // Vibrate only once per target
     
     [Header("Vibration Patterns")]
-    [SerializeField] private VibrationType vibrationType = VibrationType.Short;
-    [SerializeField] private int customVibrationCount = 2; // For custom pattern
-    [SerializeField] private float customVibrationInterval = 0.2f; // Interval between vibrations
+    [SerializeField] private VibrationType vibrationType = VibrationType.Short; // Type of vibration pattern
+    [SerializeField] private int customVibrationCount = 2; // Number of vibrations for custom pattern
+    [SerializeField] private float customVibrationInterval = 0.2f; // Time between vibrations in custom pattern
     
     [Header("Platform Settings")]
-    [SerializeField] private bool enableOnMobile = true;
-    [SerializeField] private bool enableOnDesktop = true; // For testing purposes
-    
+    [SerializeField] private bool enableOnMobile = true; // Enable vibration on mobile devices
+    [SerializeField] private bool enableOnDesktop = true; // Enable vibration simulation on desktop for testing
+
+    // Available vibration patterns
     public enum VibrationType
     {
         Short,      // Single short vibration
         Long,       // Single long vibration  
         Double,     // Two quick vibrations
-        Custom      // Custom pattern
+        Custom      // Custom pattern with configurable count and interval
     }
     
-    private bool hasVibratedForCurrentTarget = false;
-    private string currentTargetName = "";
-    private Vector3 lastTargetPosition = Vector3.zero;
-    private Vector3 userPositionWhenTargetSet = Vector3.zero;
+    // State tracking variables
+    private bool hasVibratedForCurrentTarget = false; // Prevents vibration spam for same target
+    private string currentTargetName = ""; // Name of current navigation target
+    private Vector3 lastTargetPosition = Vector3.zero; // Last known target position
+    private Vector3 userPositionWhenTargetSet = Vector3.zero; // User position when target was selected
     private float minMovementRequired = 2f; // User must move at least 2m from where target was set
-    private bool hasMovedAwayFromStartPosition = false;
+    private bool hasMovedAwayFromStartPosition = false; // Tracks if user has moved away from start
     
     private void Start()
     {
         Debug.Log("ArriveTargetVibrate initialized");
         
-        // Check if vibration is supported on this platform
+        // Check platform compatibility for vibration support
         CheckVibrationSupport();
     }
     
+    /// <summary>
+    /// Checks if vibration is supported and enabled on the current platform
+    /// </summary>
     private void CheckVibrationSupport()
     {
         #if UNITY_ANDROID || UNITY_IOS
@@ -62,7 +70,7 @@ public class ArriveTargetVibrate : MonoBehaviour
     }
     
     /// <summary>
-    /// Check if user has arrived at target and trigger vibration if appropriate
+    /// Checks if user has arrived at target and triggers vibration if appropriate
     /// </summary>
     /// <param name="distanceToTarget">Current distance to target in meters</param>
     /// <param name="targetName">Name of current target</param>
@@ -70,7 +78,7 @@ public class ArriveTargetVibrate : MonoBehaviour
     /// <param name="targetPosition">Position of the target</param>
     public void CheckArrival(float distanceToTarget, string targetName = "", Vector3 currentUserPosition = default, Vector3 targetPosition = default)
     {
-        // Check if we have a new target
+        // Handle new target selection
         if (!string.IsNullOrEmpty(targetName) && targetName != currentTargetName)
         {
             currentTargetName = targetName;
@@ -81,7 +89,7 @@ public class ArriveTargetVibrate : MonoBehaviour
             Debug.Log($"New target detected for vibration: {targetName} - User must move {minMovementRequired}m before vibration can trigger");
         }
         
-        // Check if user has moved away from the starting position
+        // Check if user has moved enough distance from starting position
         if (!hasMovedAwayFromStartPosition && currentUserPosition != Vector3.zero)
         {
             float distanceFromStart = Vector3.Distance(currentUserPosition, userPositionWhenTargetSet);
@@ -92,13 +100,13 @@ public class ArriveTargetVibrate : MonoBehaviour
             }
         }
         
-        // Only check for arrival if user has moved away from starting position
+        // Prevent vibration if user hasn't moved away from starting position
         if (!hasMovedAwayFromStartPosition)
         {
             return;
         }
         
-        // Check if user has arrived (within trigger distance)
+        // Check for arrival and trigger vibration if conditions are met
         if (distanceToTarget <= triggerDistance)
         {
             // Only vibrate if we haven't vibrated for this target yet (if vibrateOnlyOnce is true)
@@ -117,7 +125,7 @@ public class ArriveTargetVibrate : MonoBehaviour
     }
     
     /// <summary>
-    /// Trigger vibration based on selected pattern
+    /// Triggers vibration based on the selected pattern type
     /// </summary>
     private void TriggerVibration()
     {
@@ -128,6 +136,7 @@ public class ArriveTargetVibrate : MonoBehaviour
             return;
         }
         
+        // Execute the appropriate vibration pattern
         switch (vibrationType)
         {
             case VibrationType.Short:
@@ -148,7 +157,7 @@ public class ArriveTargetVibrate : MonoBehaviour
     }
     
     /// <summary>
-    /// Check if vibration should be triggered on current platform
+    /// Checks if vibration should be triggered based on platform settings
     /// </summary>
     private bool ShouldVibrateOnCurrentPlatform()
     {
@@ -160,7 +169,7 @@ public class ArriveTargetVibrate : MonoBehaviour
     }
     
     /// <summary>
-    /// Short vibration (default mobile vibration)
+    /// Executes a short vibration using the default mobile vibration
     /// </summary>
     private void VibrateShort()
     {
@@ -175,7 +184,7 @@ public class ArriveTargetVibrate : MonoBehaviour
     }
     
     /// <summary>
-    /// Long vibration using Android-specific functionality
+    /// Executes a long vibration with custom duration (Android-specific)
     /// </summary>
     private void VibrateLong()
     {
@@ -195,7 +204,7 @@ public class ArriveTargetVibrate : MonoBehaviour
     }
     
     /// <summary>
-    /// Double vibration pattern
+    /// Executes a double vibration pattern (two quick vibrations)
     /// </summary>
     private void VibrateDouble()
     {
@@ -203,11 +212,11 @@ public class ArriveTargetVibrate : MonoBehaviour
     }
     
     /// <summary>
-    /// Custom vibration pattern
+    /// Executes a custom vibration pattern based on user settings
     /// </summary>
     private void VibrateCustom()
     {
-        // Create custom pattern array
+        // Create custom pattern array with alternating delays and vibrations
         float[] pattern = new float[customVibrationCount * 2];
         for (int i = 0; i < customVibrationCount; i++)
         {
@@ -219,11 +228,12 @@ public class ArriveTargetVibrate : MonoBehaviour
     }
     
     /// <summary>
-    /// Execute vibration pattern
+    /// Executes a vibration pattern with specified timing
     /// </summary>
     private System.Collections.IEnumerator VibratePattern(float[] pattern)
     {
         #if UNITY_ANDROID && !UNITY_EDITOR
+        // Use Android-specific vibration pattern API
         AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
         AndroidJavaObject currentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
         AndroidJavaObject vibrator = currentActivity.Call<AndroidJavaObject>("getSystemService", "vibrator");
@@ -244,7 +254,7 @@ public class ArriveTargetVibrate : MonoBehaviour
         }
         yield return new WaitForSeconds(totalDuration / 1000f);
         #else
-        // Fallback for iOS and desktop
+        // Fallback pattern execution for iOS and desktop
         for (int i = 0; i < pattern.Length; i += 2)
         {
             if (i > 0) yield return new WaitForSeconds(pattern[i] / 1000f); // Delay

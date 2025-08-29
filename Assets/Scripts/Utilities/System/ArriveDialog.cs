@@ -3,53 +3,57 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 
+/// <summary>
+/// Shows a dialog when the user arrives at a navigation target
+/// </summary>
 public class ArriveDialog : MonoBehaviour
 {
     [Header("Dialog Components")]
-    [SerializeField] private GameObject dialogCanvas; // The entire dialog canvas
-    [SerializeField] private GameObject blockingPanel; // Panel to block background interactions
-    [SerializeField] private Button continueButton;
-    [SerializeField] private Button endButton;
-    [SerializeField] private TextMeshProUGUI messageText; // DialogMessage text object
+    [SerializeField] private GameObject dialogCanvas; // Main dialog container
+    [SerializeField] private GameObject blockingPanel; // Panel to block background interactions in modal mode
+    [SerializeField] private Button continueButton; // Button to continue navigation after arrival
+    [SerializeField] private Button endButton; // Button to end navigation and clear targets
+    [SerializeField] private TextMeshProUGUI messageText; // Text displaying arrival message
     
     [Header("Navigation References")]
-    [SerializeField] private TargetHandler targetHandler; // Reference to clear navigation
-    [SerializeField] private TMP_Dropdown navigationDropdown; // Reference to reset dropdown
+    [SerializeField] private TargetHandler targetHandler; // Reference for clearing navigation targets
+    [SerializeField] private TMP_Dropdown navigationDropdown; // Reference for resetting dropdown selection
     
     [Header("Dialog Settings")]
-    [SerializeField] private float triggerDistance = 1.5f; // Distance to trigger dialog
-    [SerializeField] private bool showOnlyOnce = true; // Show dialog only once per target
+    [SerializeField] private float triggerDistance = 1.5f; // Distance to trigger arrival dialog
+    [SerializeField] private bool showOnlyOnce = true; // Show dialog only once per target to prevent spam
     
     [Header("Modal Settings")]
-    [SerializeField] private bool enableModalMode = true; // Enable modal behavior
-    [SerializeField] private Color blockingPanelColor = new Color(0, 0, 0, 0.5f); // Semi-transparent black
+    [SerializeField] private bool enableModalMode = true; // Enable modal behavior to block background interactions
+    [SerializeField] private Color blockingPanelColor = new Color(0, 0, 0, 0.5f); // Color for background blocking panel
     
-    private bool hasShownForCurrentTarget = false;
-    private string currentTargetName = "";
-    private bool isDialogActive = false;
+    // State tracking variables
+    private bool hasShownForCurrentTarget = false; // Prevents dialog spam for same target
+    private string currentTargetName = ""; // Name of current navigation target
+    private bool isDialogActive = false; // Whether dialog is currently displayed
     
     // Modal interaction blocking
-    private static ArriveDialog activeModalDialog = null;
+    private static ArriveDialog activeModalDialog = null; // Tracks currently active modal dialog
     
     private void Start()
     {
-        // Ensure dialog is hidden at start
+        // Initialize dialog in hidden state
         if (dialogCanvas != null)
         {
             dialogCanvas.SetActive(false);
         }
         
-        // Setup blocking panel if modal mode is enabled
+        // Configure modal blocking panel if modal mode is enabled
         SetupBlockingPanel();
         
-        // Setup button listeners
+        // Set up button click event listeners
         SetupButtons();
         
         Debug.Log("ArriveDialog initialized");
     }
     
     /// <summary>
-    /// Setup blocking panel for modal behavior
+    /// Configures the blocking panel for modal behavior
     /// </summary>
     private void SetupBlockingPanel()
     {
@@ -61,10 +65,10 @@ public class ArriveDialog : MonoBehaviour
             return;
         }
         
-        // Ensure blocking panel is initially hidden
+        // Hide blocking panel initially
         blockingPanel.SetActive(false);
         
-        // Setup blocking panel properties if it has an Image component
+        // Configure blocking panel appearance and interaction blocking
         var panelImage = blockingPanel.GetComponent<UnityEngine.UI.Image>();
         if (panelImage != null)
         {
@@ -74,7 +78,10 @@ public class ArriveDialog : MonoBehaviour
         
         Debug.Log("Blocking panel setup complete");
     }
-    
+
+    /// <summary>
+    /// Sets up button click event listeners
+    /// </summary>
     private void SetupButtons()
     {
         if (continueButton != null)
@@ -99,17 +106,17 @@ public class ArriveDialog : MonoBehaviour
     }
     
     /// <summary>
-    /// Check if user has arrived and should show dialog
+    /// Checks if user has arrived at target and shows dialog if appropriate
     /// </summary>
     /// <param name="distanceToTarget">Current distance to target</param>
     /// <param name="targetName">Name of current target</param>
     public void CheckArrival(float distanceToTarget, string targetName = "")
     {
-        // Check if we have a new target
+        // Handle new target selection
         if (!string.IsNullOrEmpty(targetName) && targetName != currentTargetName)
         {
             currentTargetName = targetName;
-            // Only reset if we're NOT already close to the new target
+            // Only reset dialog state if we're NOT already close to the new target
             // This prevents immediate dialog showing when selecting nearby targets
             if (distanceToTarget > triggerDistance)
             {
@@ -123,7 +130,7 @@ public class ArriveDialog : MonoBehaviour
             Debug.Log($"New target detected for dialog: {targetName} (distance: {distanceToTarget:F2}m)");
         }
         
-        // Check if user has arrived and dialog should be shown
+        // Check if user has arrived and dialog should be displayed
         if (distanceToTarget <= triggerDistance && !isDialogActive)
         {
             // Only show if we haven't shown for this target yet (if showOnlyOnce is true)
@@ -140,7 +147,7 @@ public class ArriveDialog : MonoBehaviour
     }
     
     /// <summary>
-    /// Show the arrival dialog
+    /// Displays the arrival dialog with target-specific message
     /// </summary>
     private void ShowArrivalDialog(string targetName = "")
     {
@@ -152,7 +159,7 @@ public class ArriveDialog : MonoBehaviour
             // Enable modal blocking if configured
             EnableModalBlocking();
             
-            // Update message text if available
+            // Update message text with target name or generic message
             if (messageText != null)
             {
                 if (!string.IsNullOrEmpty(targetName))
@@ -174,7 +181,7 @@ public class ArriveDialog : MonoBehaviour
     }
     
     /// <summary>
-    /// Hide the arrival dialog
+    /// Hides the arrival dialog and restores normal interaction
     /// </summary>
     private void HideArrivalDialog()
     {
@@ -191,7 +198,7 @@ public class ArriveDialog : MonoBehaviour
     }
     
     /// <summary>
-    /// Continue button clicked - close dialog and reset target state
+    /// Handles continue button click - closes dialog and resets state for new targets
     /// </summary>
     private void OnContinueButtonClicked()
     {
@@ -206,7 +213,7 @@ public class ArriveDialog : MonoBehaviour
     }
     
     /// <summary>
-    /// End button clicked - clear navigation and close dialog
+    /// Handles end button click - clears navigation and closes dialog
     /// </summary>
     private void OnEndButtonClicked()
     {
@@ -242,7 +249,7 @@ public class ArriveDialog : MonoBehaviour
     }
     
     /// <summary>
-    /// Reset dialog state for new navigation session
+    /// Resets dialog state for new navigation session
     /// </summary>
     public void ResetDialogState()
     {
@@ -253,7 +260,7 @@ public class ArriveDialog : MonoBehaviour
     }
     
     /// <summary>
-    /// Set the trigger distance dynamically
+    /// Sets the trigger distance dynamically
     /// </summary>
     public void SetTriggerDistance(float distance)
     {
@@ -262,7 +269,7 @@ public class ArriveDialog : MonoBehaviour
     }
     
     /// <summary>
-    /// Check if dialog is currently active
+    /// Returns whether dialog is currently active/visible
     /// </summary>
     public bool IsDialogActive()
     {

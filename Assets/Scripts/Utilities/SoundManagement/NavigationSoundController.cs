@@ -2,35 +2,40 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Manages directional audio instructions for navigation (turn left, right, etc.)
+/// Automatically blocks navigation sounds when arrival dialog is active to prevent interference
+/// </summary>
 public class NavigationSoundController : MonoBehaviour
 {
     [Header("Navigation Audio Clips")]
-    public AudioClip turnLeftClip;
-    public AudioClip turnRightClip;
-    public AudioClip continueStraightClip;
-    public AudioClip uTurnClip; // New U-turn audio clip
+    public AudioClip turnLeftClip; // Sound for left turn instructions
+    public AudioClip turnRightClip; // Sound for right turn instructions
+    public AudioClip continueStraightClip; // Sound for straight/forward instructions
+    public AudioClip uTurnClip; // Sound for U-turn instructions
     
     [Header("Audio Settings")]
-    public AudioSource audioSource;
-    public float volume = 1f;
-    public bool enableNavigationSounds = true;
+    public AudioSource audioSource; // Audio component for playing instruction sounds
+    public float volume = 1f; // Volume level for navigation sounds
+    public bool enableNavigationSounds = true; // Toggle to enable/disable navigation sounds
     
     [Header("Sound Timing")]
-    public float instructionCooldown = 3f; // Minimum time between ANY instructions (increased from 2f)
+    public float instructionCooldown = 2f; // Minimum time between ANY instructions
     public float sameInstructionCooldown = 5f; // Extra cooldown for repeating the same instruction
     public float minimumMovementDistance = 2f; // Minimum distance user must move before next instruction
     
-    // Private variables
-    private float lastInstructionTime = 0f;
-    private string lastInstruction = "";
-    private Vector3 lastInstructionPosition = Vector3.zero;
+    // State tracking variables
+    private float lastInstructionTime = 0f; // Time when last instruction was played
+    private string lastInstruction = ""; // Last instruction that was played
+    private Vector3 lastInstructionPosition = Vector3.zero; // Position where last instruction was given
     
-    // Sound controller reference for mute checking
-    private SoundController soundController;
+    // External component references
+    private SoundController soundController; // Reference to check global mute state
+    private ArriveDialog arriveDialog; // Reference to check if arrival dialog is blocking navigation sounds
     
     void Start()
     {
-        // Get or create AudioSource component
+        // Initialize AudioSource component if not assigned
         if (audioSource == null)
         {
             audioSource = GetComponent<AudioSource>();
@@ -40,13 +45,16 @@ public class NavigationSoundController : MonoBehaviour
             }
         }
         
-        // Configure AudioSource
+        // Configure AudioSource for navigation instructions
         audioSource.volume = volume;
         audioSource.playOnAwake = false;
         audioSource.spatialBlend = 0f; // 2D sound for UI feedback
         
-        // Find SoundController to check if sounds are muted
+        // Find SoundController to check global mute state
         soundController = FindObjectOfType<SoundController>();
+        
+        // Find ArriveDialog to check if arrival dialog is blocking navigation sounds
+        arriveDialog = FindObjectOfType<ArriveDialog>();
         
         Debug.Log("NavigationSoundController initialized");
     }
@@ -84,14 +92,14 @@ public class NavigationSoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Play navigation instruction based on angle
+    /// Plays navigation instruction based on angle direction
     /// </summary>
     /// <param name="angle">Angle in degrees (-180 to 180, negative = left, positive = right)</param>
     public void PlayDirectionInstruction(float angle)
     {
         float absAngle = Mathf.Abs(angle);
         
-        // Determine direction based on angle thresholds
+        // Determine appropriate instruction based on angle thresholds
         if (absAngle > 150f) // U-turn detection (150°+ turn)
         {
             PlayUTurn();
@@ -111,13 +119,14 @@ public class NavigationSoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Play navigation instruction based on direction string
+    /// Plays navigation instruction based on direction string
     /// </summary>
     /// <param name="direction">Direction string: "left", "right", "straight", "uturn"</param>
     public void PlayDirectionInstruction(string direction)
     {
         direction = direction.ToLower().Trim();
         
+        // Match direction strings to appropriate instruction sounds
         switch (direction)
         {
             case "left":
@@ -146,38 +155,45 @@ public class NavigationSoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Core method to play navigation sounds with cooldown and mute checking
+    /// Core method that handles playing navigation sounds with spam prevention
     /// </summary>
     private void PlayNavigationSound(AudioClip clip, string instruction)
     {
-        // Check if navigation sounds are enabled
+        // Check if navigation sounds are globally enabled
         if (!enableNavigationSounds)
         {
             Debug.Log($"Navigation sounds disabled - skipping: {instruction}");
             return;
         }
         
-        // Check if sounds are globally muted
+        // Check if sounds are globally muted via SoundController
         if (soundController != null && soundController.IsSoundMuted())
         {
             Debug.Log($"Sounds are muted - skipping: {instruction}");
             return;
         }
         
-        // Check if audio clip is assigned
+        // Check if arrival dialog is active and blocking navigation sounds
+        if (arriveDialog != null && arriveDialog.IsDialogActive())
+        {
+            Debug.Log($"Arrival dialog is active - blocking navigation sound: {instruction}");
+            return;
+        }
+        
+        // Validate audio clip is assigned
         if (clip == null)
         {
             Debug.LogWarning($"Audio clip not assigned for: {instruction}");
             return;
         }
         
-        // Check cooldown to prevent spam
+        // Calculate time and distance since last instruction for spam prevention
         float currentTime = Time.time;
         float timeSinceLastInstruction = currentTime - lastInstructionTime;
         Vector3 currentPosition = Camera.main != null ? Camera.main.transform.position : transform.position;
         float distanceSinceLastInstruction = Vector3.Distance(currentPosition, lastInstructionPosition);
         
-        // Check if we're in the general cooldown period (blocks ALL instructions)
+        // Prevent instruction spam with general cooldown
         if (timeSinceLastInstruction < instructionCooldown)
         {
             Debug.Log($"General instruction cooldown active - skipping: {instruction} (last played {timeSinceLastInstruction:F1}s ago)");
@@ -191,14 +207,14 @@ public class NavigationSoundController : MonoBehaviour
             return;
         }
         
-        // Check if user has moved enough since last instruction (prevents spam when standing still)
+        // Require minimum movement to prevent spam when standing still
         if (lastInstructionPosition != Vector3.zero && distanceSinceLastInstruction < minimumMovementDistance)
         {
             Debug.Log($"Insufficient movement - skipping: {instruction} (moved {distanceSinceLastInstruction:F1}m, need {minimumMovementDistance}m)");
             return;
         }
         
-        // Play the sound
+        // Play the instruction sound and update tracking variables
         if (audioSource != null)
         {
             audioSource.clip = clip;
@@ -218,7 +234,7 @@ public class NavigationSoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Enable or disable navigation sounds
+    /// Toggles navigation sounds on or off
     /// </summary>
     public void SetNavigationSoundsEnabled(bool enabled)
     {
@@ -227,7 +243,7 @@ public class NavigationSoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Set the volume for navigation sounds
+    /// Sets the volume level for navigation sounds
     /// </summary>
     public void SetVolume(float newVolume)
     {
@@ -240,7 +256,7 @@ public class NavigationSoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Check if navigation sounds are currently enabled
+    /// Returns whether navigation sounds are currently enabled
     /// </summary>
     public bool AreNavigationSoundsEnabled()
     {
@@ -248,7 +264,7 @@ public class NavigationSoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Stop any currently playing navigation sound
+    /// Stops any currently playing navigation instruction sound
     /// </summary>
     public void StopNavigationSound()
     {
@@ -260,7 +276,7 @@ public class NavigationSoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Reset instruction cooldown (useful when starting new navigation)
+    /// Resets instruction cooldown timers (useful when starting new navigation)
     /// </summary>
     public void ResetInstructionCooldown()
     {
@@ -271,12 +287,21 @@ public class NavigationSoundController : MonoBehaviour
     }
     
     /// <summary>
-    /// Reset all navigation sound state (stop sounds and reset cooldown)
+    /// Completely resets navigation sound state (stops sounds and clears cooldowns)
     /// </summary>
     public void ResetNavigationSoundState()
     {
         StopNavigationSound();
         ResetInstructionCooldown();
         Debug.Log("Navigation sound state completely reset");
+    }
+    
+    /// <summary>
+    /// Manually set the arrival dialog reference (if automatic finding doesn't work)
+    /// </summary>
+    public void SetArriveDialog(ArriveDialog dialog)
+    {
+        arriveDialog = dialog;
+        Debug.Log("ArriveDialog reference manually set");
     }
 }

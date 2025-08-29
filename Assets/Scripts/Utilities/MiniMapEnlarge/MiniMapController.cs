@@ -2,13 +2,19 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+/// <summary>
+/// Controls minimap enlargement, dragging, zooming, and restoration
+/// </summary>
 public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandler, IScrollHandler
 {
-    public Camera topDownCamera;
-    public Camera arCamera; // Reference to AR camera for position calculation
-    public float dragSpeed = 2f;
-    public float coverageIncrease = 2.0f; // Increase to 200% more coverage
-    public CloseButton closeButton;
+    [Header("Camera References")]
+    public Camera topDownCamera; // Minimap camera
+    public Camera arCamera; // AR camera for position tracking
+    
+    [Header("Interaction Settings")]
+    public float dragSpeed = 2f; // Camera drag sensitivity
+    public float coverageIncrease = 2.0f; // Zoom coverage multiplier
+    public CloseButton closeButton; // Reference to close button
     
     [Header("Zoom Settings")]
     public float zoomSpeed = 0.5f;
@@ -17,27 +23,27 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
     
     [Header("Movement Boundaries")]
     [Header("Map Size: X=101, Z=36 | Camera: Size=6, Y=5")]
-    public float mapBoundaryX = 38.5f; // Max X movement: (101/2) - (6*1.77) = 50.5 - 10.6 ≈ 38.5
-    public float mapBoundaryZ = 12f;   // Max Z movement: (36/2) - 6 = 18 - 6 = 12
+    public float mapBoundaryX = 38.5f; // Max X movement boundary
+    public float mapBoundaryZ = 12f;   // Max Z movement boundary
     
     [Header("Map Center (World Coordinates)")]
-    public Vector3 actualMapCenter = Vector3.zero; // Set this to your actual map center in world coordinates
+    public Vector3 actualMapCenter = Vector3.zero; // World space map center
     
-    // Touch/pinch zoom variables
+    // Touch input variables
     private float lastTouchDistance = 0f;
     private bool isPinching = false;
-    private Vector3 mapCenter; // Center position for boundary calculations
-    private Vector3 logicalCameraPosition; // Logical position for movement calculations (Z can change)
+    private Vector3 mapCenter; // Calculated center for boundaries
+    private Vector3 logicalCameraPosition; // Logical camera position for calculations
     
     [Header("UI References")]
-    public GameObject border; // Border GameObject (active by default)
-    public GameObject borderEnlarged; // BorderEnlarged GameObject (inactive by default)
-    public RectTransform minimapRawImage; // MiniMapRawImage RectTransform
+    public GameObject border; // Normal minimap border
+    public GameObject borderEnlarged; // Enlarged minimap border
+    public RectTransform minimapRawImage; // Minimap image component
 
-    public bool isFullscreen = false;
+    public bool isFullscreen = false; // Current state tracker
     private RectTransform minimapRectTransform;
     
-    // Store ALL original settings for proper restoration
+    // Original state storage for restoration
     private Vector2 originalSize;
     private Vector2 originalAnchoredPosition;
     private Vector2 originalAnchorMin;
@@ -45,9 +51,9 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
     private Vector2 originalPivot;
     private Vector3 originalCameraPosition;
     private float originalOrthographicSize;
-    private Transform originalParent; // Store original parent
+    private Transform originalParent;
     
-    // Store original MiniMapRawImage settings
+    // Original raw image settings for restoration
     private Vector2 originalRawImageAnchorMin;
     private Vector2 originalRawImageAnchorMax;
     private Vector2 originalRawImageOffsetMin;
@@ -59,22 +65,22 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
     {
         minimapRectTransform = GetComponent<RectTransform>();
         
-        // Store ALL original UI settings
+        // Store original UI layout settings for restoration
         originalSize = minimapRectTransform.sizeDelta;
         originalAnchoredPosition = minimapRectTransform.anchoredPosition;
         originalAnchorMin = minimapRectTransform.anchorMin;
         originalAnchorMax = minimapRectTransform.anchorMax;
         originalPivot = minimapRectTransform.pivot;
-        originalParent = minimapRectTransform.parent; // Store original parent
+        originalParent = minimapRectTransform.parent;
         
-        // Store original camera settings
+        // Store original camera state
         if (topDownCamera != null)
         {
             originalCameraPosition = topDownCamera.transform.position;
             originalOrthographicSize = topDownCamera.orthographicSize;
         }
         
-        // Store original MiniMapRawImage settings
+        // Store original raw image settings for proper restoration
         if (minimapRawImage != null)
         {
             originalRawImageAnchorMin = minimapRawImage.anchorMin;
@@ -82,10 +88,10 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
             originalRawImageOffsetMin = minimapRawImage.offsetMin;
             originalRawImageOffsetMax = minimapRawImage.offsetMax;
             originalRawImageAnchoredPosition = minimapRawImage.anchoredPosition;
-            originalRawImageSizeDelta = minimapRawImage.sizeDelta; // Store original size
+            originalRawImageSizeDelta = minimapRawImage.sizeDelta;
         }
         
-        // Verify assignments
+        // Debug verification of component assignments
         Debug.Log($"MiniMapController Start - Verifying assignments:");
         Debug.Log($"border: {(border != null ? border.name : "NULL")}");
         Debug.Log($"borderEnlarged: {(borderEnlarged != null ? borderEnlarged.name : "NULL")}");
@@ -99,12 +105,14 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
 
     public void OnPointerClick(PointerEventData eventData)
     {
+        // Enlarge minimap when clicked (only if not already fullscreen)
         if (!isFullscreen)
         {
             Debug.Log("Minimap clicked - starting enlargement");
             EnlargeMinimap();
             AdjustCameraForFullscreen();
             
+            // Show close button for enlarged mode
             if (closeButton != null)
             {
                 closeButton.ShowButton();
@@ -116,10 +124,10 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
 
     void Update()
     {
-        // Handle mobile pinch-to-zoom
+        // Handle touch controls when in fullscreen mode
         if (isFullscreen && Input.touchCount == 2)
         {
-            HandlePinchZoom();
+            HandlePinchZoom(); // Mobile pinch-to-zoom
         }
         else
         {
@@ -401,12 +409,12 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
         Debug.Log($"Map center set to: {mapCenter}");
     }
 
-    // PUBLIC method for external scripts to restore minimap
+    // Restore minimap to normal size (called by close button or external scripts)
     public void RestoreMinimap()
     {
-        if (!isFullscreen) return;
+        if (!isFullscreen) return; // Already in normal mode
 
-        // Move MiniMapRawImage back to Border parent
+        // Move raw image back to normal border parent
         if (minimapRawImage != null && border != null)
         {
             Debug.Log($"RestoreMinimap - MiniMapRawImage current parent: {minimapRawImage.parent.name}");
@@ -415,13 +423,13 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
             Debug.Log($"Moved MiniMapRawImage from {currentParentOfRawImage.name} back to {border.name}");
             Debug.Log($"MiniMapRawImage restored parent: {minimapRawImage.parent.name}");
             
-            // Restore original MiniMapRawImage settings
+            // Restore all original raw image layout settings
             minimapRawImage.anchorMin = originalRawImageAnchorMin;
             minimapRawImage.anchorMax = originalRawImageAnchorMax;
             minimapRawImage.offsetMin = originalRawImageOffsetMin;
             minimapRawImage.offsetMax = originalRawImageOffsetMax;
             minimapRawImage.anchoredPosition = originalRawImageAnchoredPosition;
-            minimapRawImage.sizeDelta = originalRawImageSizeDelta; // Restore original size
+            minimapRawImage.sizeDelta = originalRawImageSizeDelta;
             
             Debug.Log($"MiniMapRawImage settings restored - sizeDelta: {minimapRawImage.sizeDelta}");
         }
@@ -431,7 +439,7 @@ public class MiniMapController : MonoBehaviour, IPointerClickHandler, IDragHandl
             if (border == null) Debug.LogError("border is null during restore!");
         }
         
-        // Restore Border activation and deactivate BorderEnlarged
+        // Switch border visibility back to normal
         if (border != null)
         {
             border.SetActive(true);
