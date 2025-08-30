@@ -43,6 +43,9 @@ public class TargetHandler : MonoBehaviour
     private bool isNavigationActive = false;
     private Coroutine rerouteCoroutine;
     
+    // Action feedback
+    private ActionLabel actionLabel; // Reference to action label for target navigation messages
+    
     // Navigation direction tracking
     private Vector3 lastUserPosition = Vector3.zero;
     private Vector3 lastDirection = Vector3.zero;
@@ -52,6 +55,28 @@ public class TargetHandler : MonoBehaviour
     private void Start()
     {
         DeactivateAllTargets(); // Hide all targets initially
+        
+        // Find ActionLabel component automatically
+        actionLabel = FindObjectOfType<ActionLabel>();
+        
+        if (actionLabel == null)
+        {
+            Debug.LogWarning("ActionLabel not found - Target navigation messages will not be displayed");
+        }
+    }
+
+    // Helper method to display navigation message
+    private void ShowNavigationToTargetMessage(string targetName)
+    {
+        if (actionLabel == null)
+        {
+            actionLabel = FindObjectOfType<ActionLabel>();
+        }
+        
+        if (actionLabel != null)
+        {
+            actionLabel.ShowNavigationToTarget(targetName);
+        }
     }
 
     public void SetSelectedTargetPositionWithDropdown(int selectedValue)
@@ -79,6 +104,9 @@ public class TargetHandler : MonoBehaviour
             {
                 currentTargetName = navigationTargetObjects[selectedValue].Name;
                 StartContinuousRerouting();
+                
+                // Show navigation start message via ActionLabel
+                ShowNavigationToTargetMessage(currentTargetName);
             }
             
             StartCoroutine(UpdateDistanceAfterPathCalculation());
@@ -358,6 +386,9 @@ public class TargetHandler : MonoBehaviour
             // Store current target name for rerouting
             currentTargetName = targetName;
             StartContinuousRerouting();
+            
+            // Show navigation message
+            ShowNavigationToTargetMessage(targetName);
             
             StartCoroutine(UpdateDistanceAfterPathCalculation());
         }

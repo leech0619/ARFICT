@@ -18,11 +18,22 @@ public class SwitchPathVisualisation : MonoBehaviour {
     private int visualisationCounter = 0; // Current visualization mode index
     private GameObject activeVisualisation; // Currently active visualization object
     private GameObject activeDistanceLabel; // Distance label reference
+    
+    // Action feedback
+    private ActionLabel actionLabel; // Reference to action label for mode change messages
 
     private void Start() {
         // Initialize with line visualization as default
         activeVisualisation = pathLineVis.gameObject;
         activeDistanceLabel = distanceLabel.gameObject;
+        
+        // Find ActionLabel component automatically
+        actionLabel = FindObjectOfType<ActionLabel>();
+        
+        if (actionLabel == null)
+        {
+            Debug.LogWarning("ActionLabel not found - Navigation mode change messages will not be displayed");
+        }
     }
 
     /// <summary>
@@ -33,6 +44,23 @@ public class SwitchPathVisualisation : MonoBehaviour {
 
         DisableAllPathVisuals(); // Turn off all visualizations
         EnablePathVisualsByIndex(visualisationCounter); // Enable the selected one
+        
+        // Find ActionLabel if not already found (fixes timing issue)
+        if (actionLabel == null)
+        {
+            actionLabel = FindObjectOfType<ActionLabel>();
+        }
+        
+        // Show mode change message via ActionLabel
+        if (actionLabel != null)
+        {
+            bool isArrowMode = (visualisationCounter == 1);
+            actionLabel.ShowNavigationModeChange(isArrowMode);
+        }
+        else
+        {
+            Debug.LogWarning("ActionLabel still not found when trying to show mode change message");
+        }
     }
 
     /// <summary>
@@ -67,7 +95,50 @@ public class SwitchPathVisualisation : MonoBehaviour {
     /// </summary>
     public void ToggleVisualVisibility()
     {
-        activeVisualisation.SetActive(!activeVisualisation.activeSelf);
-        activeDistanceLabel.SetActive(!activeDistanceLabel.activeSelf);
+        bool isBecomingActive = !activeVisualisation.activeSelf;
+        
+        activeVisualisation.SetActive(isBecomingActive);
+        activeDistanceLabel.SetActive(isBecomingActive);
+        
+        // Find ActionLabel if not already found (fixes timing issue)
+        if (actionLabel == null)
+        {
+            actionLabel = FindObjectOfType<ActionLabel>();
+        }
+        
+        // Show navigation toggle message via ActionLabel
+        if (actionLabel != null)
+        {
+            actionLabel.ShowNavigationToggle(isBecomingActive);
+        }
+        else
+        {
+            Debug.LogWarning("ActionLabel still not found when trying to show navigation toggle message");
+        }
+    }
+    
+    /// <summary>
+    /// Returns whether navigation visualization is currently active
+    /// </summary>
+    public bool IsNavigationActive()
+    {
+        return activeVisualisation != null && activeVisualisation.activeSelf;
+    }
+    
+    /// <summary>
+    /// Returns whether currently in arrow mode (true) or line mode (false)
+    /// </summary>
+    public bool IsArrowMode()
+    {
+        return visualisationCounter == 1;
+    }
+    
+    /// <summary>
+    /// Manually set the ActionLabel reference if automatic finding doesn't work
+    /// </summary>
+    public void SetActionLabel(ActionLabel label)
+    {
+        actionLabel = label;
+        Debug.Log("SwitchPathVisualisation ActionLabel reference manually set");
     }
 }

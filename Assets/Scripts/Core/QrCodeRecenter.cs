@@ -28,6 +28,20 @@ public class QrCodeRecenter : MonoBehaviour
     private Texture2D cameraImageTexture; // Texture for processing camera frames
     private IBarcodeReader reader = new BarcodeReader(); // ZXing QR code reader
     private bool scanningEnabled = false; // Controls whether QR scanning is active
+    
+    // Action feedback
+    private ActionLabel actionLabel; // Reference to action label for success messages
+
+    private void Start()
+    {
+        // Find ActionLabel component automatically
+        actionLabel = FindObjectOfType<ActionLabel>();
+        
+        if (actionLabel == null)
+        {
+            Debug.LogWarning("ActionLabel not found - QR success messages will not be displayed");
+        }
+    }
 
     private void Update()
     {
@@ -108,6 +122,28 @@ public class QrCodeRecenter : MonoBehaviour
             session.Reset();
             sessionOrigin.transform.position = currentTarget.PositionObject.transform.position;
             sessionOrigin.transform.rotation = currentTarget.PositionObject.transform.rotation;
+            
+            // Find ActionLabel if not already found (fixes timing issue)
+            if (actionLabel == null)
+            {
+                actionLabel = FindObjectOfType<ActionLabel>();
+            }
+            
+            // Show success message via ActionLabel
+            if (actionLabel != null)
+            {
+                actionLabel.ShowQRScanSuccess();
+            }
+            else
+            {
+                Debug.LogWarning("ActionLabel still not found when trying to show QR success message");
+            }
+            
+            Debug.Log($"QR Code recentering successful to target: {targetText}");
+        }
+        else
+        {
+            Debug.LogWarning($"Target not found for QR code text: {targetText}");
         }
     }
 
