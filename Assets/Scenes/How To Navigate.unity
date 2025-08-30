@@ -931,7 +931,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &566287028
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1736,7 +1736,7 @@ MonoBehaviour:
   - tutorialObject: {fileID: 1113706479}
     tutorialNumber: 4
     nextButton: {fileID: 0}
-    backButton: {fileID: 1870614179}
+    backButton: {fileID: 849117564}
   currentTutorialIndex: 1
   startTutorialOnAwake: 1
 --- !u!1 &1001273912
