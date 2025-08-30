@@ -229,7 +229,7 @@ GameObject:
   - component: {fileID: 493002557}
   - component: {fileID: 493002556}
   m_Layer: 5
-  m_Name: AboutButton
+  m_Name: HowToNavigateButton
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1981,7 +1981,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: ABOUT ARFICT
+  m_text: HOW TO NAVIGATE
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 4ea781236c8a3054b8c1fe6b851e5c10, type: 2}
   m_sharedMaterial: {fileID: 3994926995733237810, guid: 4ea781236c8a3054b8c1fe6b851e5c10, type: 2}
