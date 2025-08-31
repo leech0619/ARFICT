@@ -13,6 +13,7 @@ public class NavigationSoundController : MonoBehaviour
     public AudioClip turnRightClip; // Sound for right turn instructions
     public AudioClip continueStraightClip; // Sound for straight/forward instructions
     public AudioClip uTurnClip; // Sound for U-turn instructions
+    public AudioClip navigationStartedClip; // Sound for when navigation begins to a target
     
     [Header("Audio Settings")]
     public AudioSource audioSource; // Audio component for playing instruction sounds
@@ -89,6 +90,65 @@ public class NavigationSoundController : MonoBehaviour
     public void PlayUTurn()
     {
         PlayNavigationSound(uTurnClip, "Make U-Turn");
+    }
+    
+    /// <summary>
+    /// Play navigation started sound when user selects a target
+    /// This sound indicates that navigation to the target has begun
+    /// </summary>
+    public void PlayNavigationStarted()
+    {
+        // Navigation started sound doesn't follow normal cooldown rules since it's a one-time event
+        if (!enableNavigationSounds || audioSource == null || navigationStartedClip == null)
+        {
+            return;
+        }
+        
+        // Check if arrival dialog is blocking navigation sounds
+        if (arriveDialog != null && arriveDialog.IsDialogActive())
+        {
+            return;
+        }
+        
+        // Use sound queue system for coordinated playback
+        if (SoundController.Instance != null)
+        {
+            SoundController.Instance.RequestPlaySound(() => {
+                if (audioSource != null && navigationStartedClip != null)
+                {
+                    // Stop any currently playing sound
+                    if (audioSource.isPlaying)
+                    {
+                        audioSource.Stop();
+                    }
+                    
+                    // Play navigation started sound
+                    audioSource.clip = navigationStartedClip;
+                    audioSource.volume = volume;
+                    audioSource.Play();
+                    
+                    Debug.Log("Navigation started sound played through queue system");
+                }
+            }, navigationStartedClip.length);
+        }
+        else
+        {
+            // Fallback if SoundController not available
+            Debug.LogWarning("SoundController not found, playing navigation started sound directly");
+            
+            // Stop any currently playing sound
+            if (audioSource.isPlaying)
+            {
+                audioSource.Stop();
+            }
+            
+            // Play navigation started sound
+            audioSource.clip = navigationStartedClip;
+            audioSource.volume = volume;
+            audioSource.Play();
+            
+            Debug.Log("Navigation started sound played (fallback)");
+        }
     }
     
     /// <summary>
@@ -217,15 +277,33 @@ public class NavigationSoundController : MonoBehaviour
         // Play the instruction sound and update tracking variables
         if (audioSource != null)
         {
-            audioSource.clip = clip;
-            audioSource.volume = volume;
-            audioSource.Play();
+            // Use sound queue system for coordinated playback
+            if (SoundController.Instance != null)
+            {
+                SoundController.Instance.RequestPlaySound(() => {
+                    if (audioSource != null && clip != null)
+                    {
+                        audioSource.clip = clip;
+                        audioSource.volume = volume;
+                        audioSource.Play();
+                        
+                        Debug.Log($"Playing navigation instruction through queue: {instruction} at position {currentPosition}");
+                    }
+                }, clip.length);
+            }
+            else
+            {
+                // Fallback if SoundController not available
+                audioSource.clip = clip;
+                audioSource.volume = volume;
+                audioSource.Play();
+                
+                Debug.Log($"Playing navigation instruction (fallback): {instruction} at position {currentPosition}");
+            }
             
             lastInstructionTime = currentTime;
             lastInstruction = instruction;
             lastInstructionPosition = currentPosition;
-            
-            Debug.Log($"Playing navigation instruction: {instruction} at position {currentPosition}");
         }
         else
         {

@@ -31,6 +31,9 @@ public class QrCodeRecenter : MonoBehaviour
     
     // Action feedback
     private ActionLabel actionLabel; // Reference to action label for success messages
+    
+    // Sound feedback
+    private QrCodeScannedSound qrSoundManager; // Reference to QR sound manager for audio feedback
 
     private void Start()
     {
@@ -40,6 +43,14 @@ public class QrCodeRecenter : MonoBehaviour
         if (actionLabel == null)
         {
             Debug.LogWarning("ActionLabel not found - QR success messages will not be displayed");
+        }
+        
+        // Find QrCodeScannedSound component automatically
+        qrSoundManager = FindObjectOfType<QrCodeScannedSound>();
+        
+        if (qrSoundManager == null)
+        {
+            Debug.LogWarning("QrCodeScannedSound not found - QR scan sounds will not play");
         }
     }
 
@@ -137,6 +148,12 @@ public class QrCodeRecenter : MonoBehaviour
             else
             {
                 Debug.LogWarning("ActionLabel still not found when trying to show QR success message");
+            }
+            
+            // Play success sound
+            if (qrSoundManager != null)
+            {
+                qrSoundManager.PlayQRScanSuccessSound();
             }
             
             Debug.Log($"QR Code recentering successful to target: {targetText}");

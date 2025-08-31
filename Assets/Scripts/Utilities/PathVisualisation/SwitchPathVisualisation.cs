@@ -21,6 +21,10 @@ public class SwitchPathVisualisation : MonoBehaviour {
     
     // Action feedback
     private ActionLabel actionLabel; // Reference to action label for mode change messages
+    
+    // Sound feedback
+    private ToggleNavigationSound toggleNavigationSound; // Reference to toggle navigation sound controller
+    private NavigationModeSound navigationModeSound; // Reference to navigation mode sound controller
 
     private void Start() {
         // Initialize with line visualization as default
@@ -33,6 +37,22 @@ public class SwitchPathVisualisation : MonoBehaviour {
         if (actionLabel == null)
         {
             Debug.LogWarning("ActionLabel not found - Navigation mode change messages will not be displayed");
+        }
+        
+        // Find ToggleNavigationSound component automatically
+        toggleNavigationSound = FindObjectOfType<ToggleNavigationSound>();
+        
+        if (toggleNavigationSound == null)
+        {
+            Debug.LogWarning("ToggleNavigationSound not found - Navigation toggle sounds will not play");
+        }
+        
+        // Find NavigationModeSound component automatically
+        navigationModeSound = FindObjectOfType<NavigationModeSound>();
+        
+        if (navigationModeSound == null)
+        {
+            Debug.LogWarning("NavigationModeSound not found - Navigation mode switch sounds will not play");
         }
     }
 
@@ -60,6 +80,23 @@ public class SwitchPathVisualisation : MonoBehaviour {
         else
         {
             Debug.LogWarning("ActionLabel still not found when trying to show mode change message");
+        }
+        
+        // Find NavigationModeSound if not already found (fixes timing issue)
+        if (navigationModeSound == null)
+        {
+            navigationModeSound = FindObjectOfType<NavigationModeSound>();
+        }
+        
+        // Play appropriate mode sound
+        if (navigationModeSound != null)
+        {
+            bool isArrowMode = (visualisationCounter == 1);
+            navigationModeSound.PlayModeSound(isArrowMode);
+        }
+        else
+        {
+            Debug.LogWarning("NavigationModeSound still not found when trying to play mode sound");
         }
     }
 
@@ -114,6 +151,22 @@ public class SwitchPathVisualisation : MonoBehaviour {
         else
         {
             Debug.LogWarning("ActionLabel still not found when trying to show navigation toggle message");
+        }
+        
+        // Find ToggleNavigationSound if not already found (fixes timing issue)
+        if (toggleNavigationSound == null)
+        {
+            toggleNavigationSound = FindObjectOfType<ToggleNavigationSound>();
+        }
+        
+        // Play appropriate toggle sound
+        if (toggleNavigationSound != null)
+        {
+            toggleNavigationSound.PlayToggleSound(isBecomingActive);
+        }
+        else
+        {
+            Debug.LogWarning("ToggleNavigationSound still not found when trying to play toggle sound");
         }
     }
     

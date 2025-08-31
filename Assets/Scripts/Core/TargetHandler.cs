@@ -107,6 +107,12 @@ public class TargetHandler : MonoBehaviour
                 
                 // Show navigation start message via ActionLabel
                 ShowNavigationToTargetMessage(currentTargetName);
+                
+                // Play navigation started sound
+                if (navigationSoundController != null)
+                {
+                    navigationSoundController.PlayNavigationStarted();
+                }
             }
             
             StartCoroutine(UpdateDistanceAfterPathCalculation());
@@ -389,6 +395,12 @@ public class TargetHandler : MonoBehaviour
             
             // Show navigation message
             ShowNavigationToTargetMessage(targetName);
+            
+            // Play navigation started sound
+            if (navigationSoundController != null)
+            {
+                navigationSoundController.PlayNavigationStarted();
+            }
             
             StartCoroutine(UpdateDistanceAfterPathCalculation());
         }
