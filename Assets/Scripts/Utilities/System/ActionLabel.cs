@@ -144,6 +144,15 @@ public class ActionLabel : MonoBehaviour
     }
     
     /// <summary>
+    /// Shows QR code invalid message
+    /// Call this when QR code is scanned but target is not found or QR is invalid
+    /// </summary>
+    public void ShowQRScanInvalid()
+    {
+        ShowActionLabel("QR code is invalid");
+    }
+    
+    /// <summary>
     /// Shows navigation toggle status message
     /// Call this when navigation visibility is toggled on/off
     /// </summary>

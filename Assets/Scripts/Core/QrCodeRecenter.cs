@@ -61,6 +61,12 @@ public class QrCodeRecenter : MonoBehaviour
         {
             SetQrCodeRecenterTarget("MainEntrance");
         }
+        
+        // Debug: V key for testing invalid QR code
+        if (Input.GetKeyDown(KeyCode.V))
+        {
+            SetQrCodeRecenterTarget("InvalidTarget");
+        }
     }
 
     private void OnEnable()
@@ -160,7 +166,31 @@ public class QrCodeRecenter : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"Target not found for QR code text: {targetText}");
+            // Target not found - QR code is invalid
+            
+            // Find ActionLabel if not already found (fixes timing issue)
+            if (actionLabel == null)
+            {
+                actionLabel = FindObjectOfType<ActionLabel>();
+            }
+            
+            // Show invalid QR message via ActionLabel
+            if (actionLabel != null)
+            {
+                actionLabel.ShowQRScanInvalid();
+            }
+            else
+            {
+                Debug.LogWarning("ActionLabel still not found when trying to show QR invalid message");
+            }
+            
+            // Play invalid sound
+            if (qrSoundManager != null)
+            {
+                qrSoundManager.PlayQRScanInvalidSound();
+            }
+            
+            Debug.LogWarning($"Target not found for QR code text: {targetText} - QR code is invalid");
         }
     }
 

@@ -10,10 +10,13 @@ public class QrCodeScannedSound : MonoBehaviour
     [Header("QR Code Scan Sound Settings")]
     [SerializeField] private AudioSource audioSource; // Audio source for playing scan sound
     [SerializeField] private AudioClip qrScanSuccessClip; // Sound clip for successful QR scan
+    [SerializeField] private AudioClip qrScanInvalidClip; // Sound clip for invalid QR scan
     
     [Header("Volume Settings")]
     [Range(0f, 1f)]
     [SerializeField] private float successVolume = 1.0f; // Volume for success sound
+    [Range(0f, 1f)]
+    [SerializeField] private float invalidVolume = 1.0f; // Volume for invalid sound
     
     [Header("Auto Setup")]
     [SerializeField] private bool findAudioSourceAutomatically = true; // Auto-find AudioSource if not assigned
@@ -61,6 +64,11 @@ public class QrCodeScannedSound : MonoBehaviour
             Debug.LogWarning("QrCodeScannedSound: No success sound clip assigned");
         }
         
+        if (qrScanInvalidClip == null)
+        {
+            Debug.LogWarning("QrCodeScannedSound: No invalid sound clip assigned");
+        }
+        
         Debug.Log("QrCodeScannedSound: Sound system initialized");
     }
     
@@ -75,45 +83,18 @@ public class QrCodeScannedSound : MonoBehaviour
             return;
         }
         
-        // Use sound queue system for coordinated playback
-        if (SoundController.Instance != null)
+        // Stop any currently playing sound
+        if (audioSource.isPlaying)
         {
-            SoundController.Instance.RequestPlaySound(() => {
-                if (audioSource != null && qrScanSuccessClip != null)
-                {
-                    // Stop any currently playing sound
-                    if (audioSource.isPlaying)
-                    {
-                        audioSource.Stop();
-                    }
-                    
-                    // Play success sound
-                    audioSource.clip = qrScanSuccessClip;
-                    audioSource.volume = successVolume;
-                    audioSource.Play();
-                    
-                    Debug.Log("QR Code scan success sound played through queue system");
-                }
-            }, qrScanSuccessClip.length);
+            audioSource.Stop();
         }
-        else
-        {
-            // Fallback if SoundController not available
-            Debug.LogWarning("SoundController not found, playing QR scan success sound directly");
-            
-            // Stop any currently playing sound
-            if (audioSource.isPlaying)
-            {
-                audioSource.Stop();
-            }
-            
-            // Play success sound
-            audioSource.clip = qrScanSuccessClip;
-            audioSource.volume = successVolume;
-            audioSource.Play();
-            
-            Debug.Log("QR Code scan success sound played (fallback)");
-        }
+        
+        // Play success sound
+        audioSource.clip = qrScanSuccessClip;
+        audioSource.volume = successVolume;
+        audioSource.Play();
+        
+        Debug.Log("QR Code scan success sound played");
     }
     
     /// <summary>
@@ -148,6 +129,31 @@ public class QrCodeScannedSound : MonoBehaviour
     }
     
     /// <summary>
+    /// Play sound when QR code is invalid or target not found
+    /// Call this method when QR scanning detects an invalid QR code
+    /// </summary>
+    public void PlayQRScanInvalidSound()
+    {
+        if (!soundEnabled || audioSource == null || qrScanInvalidClip == null)
+        {
+            return;
+        }
+        
+        // Stop any currently playing sound
+        if (audioSource.isPlaying)
+        {
+            audioSource.Stop();
+        }
+        
+        // Play invalid sound
+        audioSource.clip = qrScanInvalidClip;
+        audioSource.volume = invalidVolume;
+        audioSource.Play();
+        
+        Debug.Log("QR Code scan invalid sound played");
+    }
+    
+    /// <summary>
     /// Enable or disable QR scan sounds
     /// </summary>
     /// <param name="enabled">True to enable sounds, false to disable</param>
@@ -173,6 +179,15 @@ public class QrCodeScannedSound : MonoBehaviour
     public void SetSuccessVolume(float volume)
     {
         successVolume = Mathf.Clamp01(volume);
+    }
+    
+    /// <summary>
+    /// Set the volume for invalid sounds
+    /// </summary>
+    /// <param name="volume">Volume level (0.0 to 1.0)</param>
+    public void SetInvalidVolume(float volume)
+    {
+        invalidVolume = Mathf.Clamp01(volume);
     }
     
     /// <summary>
