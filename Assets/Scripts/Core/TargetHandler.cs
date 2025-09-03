@@ -33,6 +33,9 @@ public class TargetHandler : MonoBehaviour
     private NavigationSoundController navigationSoundController; // Sound controller for turn instructions
     
     [SerializeField]
+    private RerouteSound rerouteSound; // Sound component for reroute notifications
+    
+    [SerializeField]
     private float rerouteCheckInterval = 1.0f; // How often to check for closer targets (in seconds)
     
     [SerializeField]
@@ -63,6 +66,17 @@ public class TargetHandler : MonoBehaviour
         {
             Debug.LogWarning("ActionLabel not found - Target navigation messages will not be displayed");
         }
+        
+        // Find RerouteSound component automatically if not assigned
+        if (rerouteSound == null)
+        {
+            rerouteSound = FindObjectOfType<RerouteSound>();
+            
+            if (rerouteSound == null)
+            {
+                Debug.LogWarning("RerouteSound not found - Reroute sounds will not be played");
+            }
+        }
     }
 
     // Helper method to display navigation message
@@ -76,6 +90,34 @@ public class TargetHandler : MonoBehaviour
         if (actionLabel != null)
         {
             actionLabel.ShowNavigationToTarget(targetName);
+        }
+    }
+    
+    // Helper method to display reroute message
+    private void ShowRerouteMessage()
+    {
+        if (actionLabel == null)
+        {
+            actionLabel = FindObjectOfType<ActionLabel>();
+        }
+        
+        if (actionLabel != null)
+        {
+            actionLabel.ShowRerouteMessage();
+        }
+    }
+    
+    // Helper method to play reroute sound
+    private void PlayRerouteSound()
+    {
+        if (rerouteSound == null)
+        {
+            rerouteSound = FindObjectOfType<RerouteSound>();
+        }
+        
+        if (rerouteSound != null)
+        {
+            rerouteSound.PlayRerouteSound();
         }
     }
 
@@ -558,6 +600,12 @@ public class TargetHandler : MonoBehaviour
         {
             // Reroute to the closer target
             Debug.Log($"Rerouting to closer {currentTargetName}: {closestTargetDistance:F2}m vs {currentTargetDistance:F2}m");
+            
+            // Play reroute sound
+            PlayRerouteSound();
+            
+            // Show reroute message
+            ShowRerouteMessage();
             
             DeactivateAllTargets();
             closestTarget.PositionObject.SetActive(true);

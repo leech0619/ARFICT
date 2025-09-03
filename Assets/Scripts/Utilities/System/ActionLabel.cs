@@ -203,6 +203,32 @@ public class ActionLabel : MonoBehaviour
     }
     
     /// <summary>
+    /// Shows reroute message when navigation switches to a closer target
+    /// Call this when the system automatically reroutes to a closer target
+    /// </summary>
+    public void ShowRerouteMessage()
+    {
+        ShowActionLabel("Reroute to Closer Target");
+    }
+    
+    /// <summary>
+    /// Shows reroute message with target name when navigation switches to a closer target
+    /// Call this when the system automatically reroutes to a specific closer target
+    /// </summary>
+    /// <param name="targetName">Name of the closer target being rerouted to</param>
+    public void ShowRerouteMessage(string targetName)
+    {
+        if (string.IsNullOrEmpty(targetName))
+        {
+            ShowRerouteMessage();
+        }
+        else
+        {
+            ShowActionLabel($"Reroute to Closer Target: {targetName}");
+        }
+    }
+    
+    /// <summary>
     /// Sets the display duration for action labels
     /// </summary>
     /// <param name="duration">Duration in seconds</param>
