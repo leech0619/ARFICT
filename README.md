@@ -5,6 +5,11 @@ It integrates **AR path guidance, optimised route calculation, and QR code-based
 
 ---
 
+## 🎥 Demo Video
+[![Watch the Demo](https://img.youtube.com/vi/tXxOqVkhKLk/0.jpg)](https://www.youtube.com/watch?v=tXxOqVkhKLk)
+
+---
+
 ## ✨ Features
 - **Multi-Floor Navigation** – seamless movement between floors with a unified NavMesh.  
 - **AR Path Guidance** – overlay navigation lines or directional arrows in real-time.  
