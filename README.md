@@ -1,7 +1,7 @@
 # 📱 ARFICT – AR-Based Indoor Navigation System
 
 ARFICT is an Augmented Reality (AR) mobile application designed to provide **indoor navigation** for the Faculty of Information and Communication Technology (FICT) at Universiti Tunku Abdul Rahman (UTAR).  
-It integrates **AR path guidance, optimised route calculation, and QR code-based localisation** to deliver an accurate and interactive navigation experience across multi-floor environments.
+It integrates **AR path guidance, optimised route calculation, and QR code-based localisation** to deliver an accurate and interactive navigation experience across **multi-floor environments**.
 
 ---
 
@@ -18,7 +18,7 @@ It integrates **AR path guidance, optimised route calculation, and QR code-based
 ---
 
 ## 🎯 Why ARFICT?
-Indoor navigation is often unreliable with GPS. **ARFICT changes the game** by combining **Augmented Reality, optimised algorithms, and QR code localisation** to guide users in real-world indoor environments, providing an experience that is more **intuitive, interactive, and accessible** than conventional methods.
+Indoor navigation is often unreliable with GPS. **ARFICT changes the game** by combining **Augmented Reality, A\* algorithms, and QR code localisation** to guide users in real-world indoor environments, providing an experience that is more **intuitive, interactive, and accessible** than conventional methods.
 
 ---
 
@@ -112,6 +112,6 @@ Licensed under the [MIT License](LICENSE).
 ## 👨‍💻 Author
 **Lee Chorng Huah**  
 Bachelor of Computer Science (Honours)  
-Faculty of Information and Communication Technology (FICT) – UTAR, Kampar Campus  
+Faculty of Information and Communication Technology (FICT) – UTAR  
 
 ---
