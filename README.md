@@ -6,7 +6,7 @@ It integrates **AR path guidance, optimised route calculation, and QR code-based
 ---
 
 ## 🎥 Demo Video
-[![Watch the Demo](https://img.youtube.com/vi/tXxOqVkhKLk/0.jpg)](https://www.youtube.com/watch?v=tXxOqVkhKLk)
+Watch the demo here: [ARFICT Demo Video](https://www.youtube.com/watch?v=tXxOqVkhKLk)
 
 ---
 
