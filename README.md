@@ -108,6 +108,11 @@ Indoor navigation is often unreliable with GPS. **ARFICT changes the game** by c
 
 ---
 
+## 🏆 Achievement
+⚔️ Selected as one of the Top 19 Final Year Projects to participate in the AutoCount UTAR FICT FYP Competition (June Trimester 2025) among 50+ applicants.
+
+---
+
 ## 📌 License
 This project is developed as part of the **Bachelor of Computer Science (Honours)** Final Year Project at **Universiti Tunku Abdul Rahman (UTAR)**.  
 Licensed under the [MIT License](LICENSE).  
